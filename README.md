@@ -171,6 +171,19 @@ thing. Strong guidance is exactly what small LLMs need to stay tidy.
 
 ---
 
+## Ouroboric by design
+
+henxels eats its own tail, and it's the better for it. Its own repo is governed by its
+own `henxels.yaml`, so every feature is dogfooded on the tool before it ships.
+`well_formed_statements` is a check that checks the checks. `markdown_links_absolute`
+guards the README that documents henxels. The pre-commit hook runs `henxels check` —
+henxels gating henxels. The contract even mirrors itself into `AGENTS.md` to steer the
+agent that edits the contract.
+
+The tail-eating *is* the test.
+
+---
+
 ## Guards & bless
 
 `settings` can guard hard-to-undo actions. They don't forbid — they make you mean it:
