@@ -29,6 +29,9 @@ henxels:
   - henxel: "Project config lives only in pyproject.toml"
     forbidden_files: [setup.py, setup.cfg]   # no `in:` = whole repo
 
+  - henxel: "Statements stay merge-ready (every one has a help= and a test)"
+    well_formed_statements: true             # dogfood the contribution quality bar
+
   - henxel: "The scratch folder must exist"
     required_files: _temp/.gitkeep
 

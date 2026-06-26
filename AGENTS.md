@@ -91,6 +91,7 @@ a file to see what governs that spot.
 - Tests are snake_case and live in tests/ (in ./tests/*)
 - Docs are kebab-case markdown, each with a title and summary (in ./docs)
 - Project config lives only in pyproject.toml
+- Statements stay merge-ready (every one has a help= and a test)
 - The scratch folder must exist
 - The parking lot should exist (gitignored — only a reminder) _(warn)_
 - Code is clean and conventional (ruff) before every commit

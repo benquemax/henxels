@@ -191,7 +191,7 @@ def cmd_create_statement(args) -> int:
 
 
 def cmd_contribute(args) -> int:
-    from henxels.catalogue import contribute_guide
+    from henxels.catalogue import contribute_guide, contribute_snippet
 
     root = Path.cwd()
     try:
@@ -199,6 +199,14 @@ def cmd_contribute(args) -> int:
     except ContractError:
         pass
     print(contribute_guide(args.name))
+    if args.name:
+        snippet = contribute_snippet(args.name)
+        if snippet:
+            source, test_stub = snippet
+            print("\n--- ready-to-paste built-in (add builtin=True + a help= string) ---\n")
+            print(source)
+            print("\n--- test stub for tests/test_statements.py ---\n")
+            print(test_stub)
     return 0
 
 

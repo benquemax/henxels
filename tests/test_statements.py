@@ -86,10 +86,46 @@ def test_required_files_present(tmp_path):
     assert run("required_files", "_todo.md", s) == []
 
 
-def test_only_these_folders(tmp_path):
+def test_only_these_subfolders(tmp_path):
     s = scope_for(tmp_path, {"docs/a.md": "x", "src/b.py": "y", "weird/c": "z"}, locations=[""])
-    violations = run("only_these_folders", ["docs", "src"], s)
+    violations = run("only_these_subfolders", ["docs", "src"], s)
     assert violations and "weird" in violations[0]
+
+
+def test_required_subfolders(tmp_path):
+    s = scope_for(tmp_path, {"pkg/__init__.py": "x"}, locations=["pkg"])
+    assert run("required_subfolders", "sub", s)  # missing
+    s2 = scope_for(tmp_path, {"pkg/sub/x.py": "x"}, locations=["pkg"])
+    assert run("required_subfolders", "sub", s2) == []
+
+
+def test_forbidden_subfolders(tmp_path):
+    s = scope_for(tmp_path, {"pkg/bad/x.py": "x"}, locations=["pkg"])
+    assert run("forbidden_subfolders", "bad", s)
+
+
+def test_filename_matches_regex(tmp_path):
+    s = scope_for(tmp_path, {"a/report_2024.md": "x"}, locations=["a"])
+    assert run("filename_matches_regex", r"\d{4}", s) == []
+    s2 = scope_for(tmp_path, {"a/report.md": "x"}, locations=["a"])
+    assert run("filename_matches_regex", r"\d{4}", s2)
+
+
+def test_command_gates_registered():
+    assert get_statement("run_before_commit").stage == "pre_commit"
+    assert get_statement("run_before_push").stage == "pre_push"
+
+
+def test_well_formed_statements_on_real_repo():
+    # Dogfood: every built-in defined in this repo must have a help= and a test.
+    from pathlib import Path
+
+    from henxels.engine.discover import discover
+    from henxels.statements.builtins import well_formed_statements
+
+    root = Path(__file__).resolve().parent.parent
+    scope = build_scope(["./*"], discover(root), root, {})
+    assert well_formed_statements(scope) == []
 
 
 # --- must_not_exist ------------------------------------------------------

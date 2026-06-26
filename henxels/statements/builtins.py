@@ -11,12 +11,14 @@ List semantics are implied by the name:
 
 from __future__ import annotations
 
+import inspect
 import re
+from pathlib import Path
 
 import yaml
 
 from henxels.casing import NAMING_CONVENTIONS
-from henxels.statements.registry import as_list, statement
+from henxels.statements.registry import all_statements, as_list, statement
 from henxels.util.glob import glob_match
 
 # --- MATCH statements ----------------------------------------------------
@@ -83,8 +85,8 @@ def required_files(param, scope):
     return violations
 
 
-@statement("required_folders", help="these folders must exist in the location (list = all)", builtin=True)
-def required_folders(param, scope):
+@statement("required_subfolders", help="these subfolders must exist in the location (list = all)", builtin=True)
+def required_subfolders(param, scope):
     names = as_list(param)
     violations = []
     for loc in scope.locations:
@@ -95,8 +97,8 @@ def required_folders(param, scope):
     return violations
 
 
-@statement("only_these_folders", help="only these immediate subfolders may exist", builtin=True)
-def only_these_folders(param, scope):
+@statement("only_these_subfolders", help="only these immediate subfolders may exist", builtin=True)
+def only_these_subfolders(param, scope):
     allowed = set(as_list(param))
     violations = []
     for loc in scope.locations:
@@ -122,8 +124,8 @@ def forbidden_files(param, scope):
     return violations
 
 
-@statement("forbidden_folders", help="none of these folders may exist", builtin=True)
-def forbidden_folders(param, scope):
+@statement("forbidden_subfolders", help="none of these subfolders may exist", builtin=True)
+def forbidden_subfolders(param, scope):
     names = as_list(param)
     violations = []
     for loc in scope.locations:
@@ -143,6 +145,50 @@ def must_not_exist(param, scope):
         if loc and scope.exists(loc):
             violations.append(f"{loc} — must not exist; remove it")
     return violations
+
+
+# --- META: keep contributed statements merge-ready -----------------------
+
+@statement(
+    "well_formed_statements",
+    help="statements defined in this repo carry a help= description and have a test",
+    builtin=True,
+)
+def well_formed_statements(scope):
+    """Dogfoodable quality bar for statement code.
+
+    Checks every statement whose source lives *in this repo* (the built-ins when run
+    on henxels itself; your custom statements when run on your repo) — they must have
+    a one-line ``help=`` and be exercised by a test. The library grows on
+    contributions, so this keeps them merge-ready.
+    """
+    root = scope.root.resolve()
+    test_text = "\n".join(
+        scope.read_text(f) or ""
+        for f in scope.all_files
+        if f.rsplit("/", 1)[-1].startswith("test_") or f.startswith("tests/") or "/tests/" in f
+    )
+    violations = []
+    for name, sdef in sorted(all_statements().items()):
+        source = inspect.getsourcefile(sdef.fn)
+        if not source or not _within(Path(source), root):
+            continue  # defined outside this repo (e.g. the installed library)
+        rel = Path(source).resolve().relative_to(root).as_posix()
+        if rel.startswith("tests/") or "/tests/" in rel or Path(source).name.startswith("test_"):
+            continue  # test fixtures aren't contributions
+        if not sdef.help:
+            violations.append(f"statement '{name}' — add a help= description (shown in `henxels catalogue`)")
+        if name not in test_text:
+            violations.append(f"statement '{name}' — add a test that exercises it")
+    return violations
+
+
+def _within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root)
+        return True
+    except ValueError:
+        return False
 
 
 # --- COMMAND gates (executed by the hooks, skipped during `check`) -------

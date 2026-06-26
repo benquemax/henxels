@@ -79,6 +79,26 @@ def contribute_guide(name: str | None = None) -> str:
     return "\n".join(lines)
 
 
+def contribute_snippet(name: str) -> tuple[str, str] | None:
+    """For a local custom statement, return (builtin-ready source, test stub)."""
+    import inspect
+
+    sdef = all_statements().get(name)
+    if not sdef or sdef.builtin:
+        return None
+    try:
+        source = inspect.getsource(sdef.fn).rstrip()
+    except (OSError, TypeError):
+        source = f"# (could not read the source of {name})"
+    func = _identifier(name)
+    test_stub = (
+        f"def test_{func}(tmp_path):\n"
+        f"    # TODO: build a Scope and assert `{name}` returns the right instruction(s)\n"
+        f"    ..."
+    )
+    return source, test_stub
+
+
 def _identifier(name: str) -> str:
     out = "".join(c if c.isalnum() else "_" for c in name).strip("_")
     return out or "my_check"

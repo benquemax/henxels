@@ -31,3 +31,22 @@ def test_contribute_guide_mentions_pr():
     out = contribute_guide()
     assert "ready-to-merge PR" in out
     assert "builtins.py" in out
+
+
+def test_contribute_snippet_for_custom():
+    from henxels import statement
+    from henxels.catalogue import contribute_snippet
+
+    @statement("cat_demo_custom")
+    def cat_demo_custom(scope):
+        return None
+
+    source, test_stub = contribute_snippet("cat_demo_custom")
+    assert "def cat_demo_custom" in source
+    assert "def test_cat_demo_custom" in test_stub
+
+
+def test_contribute_snippet_none_for_builtin():
+    from henxels.catalogue import contribute_snippet
+
+    assert contribute_snippet("filename_casing") is None  # built-ins aren't contributed
