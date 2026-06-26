@@ -1,7 +1,7 @@
 """`henxels explain` (v2) — which henxels govern a path."""
 
 from henxels.contract import Contract, Henxel
-from henxels.explain import explain_path
+from henxels.explain import explain_data, explain_path
 
 CONTRACT = Contract(henxels=[
     Henxel(text="Docs are kebab-case markdown", locations=["./docs"],
@@ -16,6 +16,15 @@ def test_explain_lists_matching_henxels():
     assert "filename_casing: kebab-case" in out
     # root-scoped henxel also applies everywhere
     assert "No setup.py" in out
+
+
+def test_explain_data_json_shape():
+    data = explain_data(CONTRACT, "docs/intro.md")
+    assert data["path"] == "docs/intro.md"
+    texts = [h["henxel"] for h in data["henxels"]]
+    assert "Docs are kebab-case markdown" in texts
+    first = data["henxels"][0]
+    assert set(first) == {"henxel", "in", "level", "statements"}
 
 
 def test_explain_silent_location():

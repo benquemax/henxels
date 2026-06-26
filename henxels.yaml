@@ -25,6 +25,7 @@ henxels:
     allowed_filetypes: .md
     filename_casing: kebab-case
     required_frontmatter: [title, summary]
+    markdown_lint: true           # pymarkdownlnt; rules tuned in [tool.pymarkdown]
 
   - henxel: "Project config lives only in pyproject.toml"
     forbidden_files: [setup.py, setup.cfg]   # no `in:` = whole repo

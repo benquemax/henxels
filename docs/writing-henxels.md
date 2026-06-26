@@ -36,6 +36,7 @@ Run `henxels catalogue` to see the built-in standard library. A few:
 - **forbidden_files / forbidden_subfolders** — none of these may exist.
 - **required_files / required_subfolders** — these must exist.
 - **run_before_commit / run_before_push** — a command (tests, lints) must pass.
+- **markdown_lint** — markdown files pass pymarkdownlnt (rules tuned in `[tool.pymarkdown]`).
 - **well_formed_statements** — your custom statements have a `help=` and a test.
 
 Scalars stand in for one-item lists, so you never write `[x]`.

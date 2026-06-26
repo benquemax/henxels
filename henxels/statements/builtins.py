@@ -147,6 +147,48 @@ def must_not_exist(param, scope):
     return violations
 
 
+# --- CONTENT: markdown linting (needs pymarkdownlnt) ---------------------
+
+@statement("markdown_lint", help="markdown files pass pymarkdownlnt (pip install pymarkdownlnt)", builtin=True)
+def markdown_lint(scope):
+    md_files = [f for f in scope.files if f.endswith(".md")]
+    if not md_files:
+        return []
+    cmd = _pymarkdown_cmd()
+    if cmd is None:
+        return ["install pymarkdownlnt to enable markdown_lint:  pip install pymarkdownlnt"]
+    import subprocess
+
+    issues = []
+    for f in md_files:
+        # Enable front-matter parsing (so YAML `---` isn't read as a setext heading);
+        # rule toggles come from the repo's pymarkdown config ([tool.pymarkdown]).
+        result = subprocess.run(
+            [*cmd, "--set", "extensions.front-matter.enabled=$!True", "scan", str(scope.root / f)],
+            capture_output=True,
+            text=True,
+            cwd=str(scope.root),
+        )
+        if result.returncode == 0:
+            continue
+        for line in result.stdout.splitlines():
+            parts = line.split(":", 4)
+            if len(parts) >= 5:
+                issues.append(f"{f} — {parts[3].strip()}: {parts[4].strip()} (line {parts[1]})")
+    return issues
+
+
+def _pymarkdown_cmd():
+    import shutil
+    import sys
+
+    venv_bin = Path(sys.executable).parent / "pymarkdown"
+    if venv_bin.exists():
+        return [str(venv_bin)]
+    found = shutil.which("pymarkdown")
+    return [found] if found else None
+
+
 # --- META: keep contributed statements merge-ready -----------------------
 
 @statement(

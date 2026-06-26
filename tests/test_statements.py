@@ -111,6 +111,20 @@ def test_filename_matches_regex(tmp_path):
     assert run("filename_matches_regex", r"\d{4}", s2)
 
 
+def test_markdown_lint_flags_issues(tmp_path):
+    from henxels.statements.builtins import markdown_lint
+
+    s = scope_for(tmp_path, {"docs/bad.md": "# Title \n\nno final newline"}, locations=["./docs"])
+    assert markdown_lint(s)  # MD009 trailing space / MD047 missing final newline
+
+
+def test_markdown_lint_clean(tmp_path):
+    from henxels.statements.builtins import markdown_lint
+
+    s = scope_for(tmp_path, {"docs/ok.md": "# Title\n\nHello world.\n"}, locations=["./docs"])
+    assert markdown_lint(s) == []
+
+
 def test_command_gates_registered():
     assert get_statement("run_before_commit").stage == "pre_commit"
     assert get_statement("run_before_push").stage == "pre_push"

@@ -14,9 +14,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Enables the `markdown_lint` statement.
+markdown = ["pymarkdownlnt>=0.9"]
 dev = [
     "pytest>=7.0",
     "ruff>=0.6",
+    "pymarkdownlnt>=0.9",
 ]
 
 [project.scripts]
@@ -44,3 +47,8 @@ ignore = ["E501"]  # line length is advisory; the formatter handles wrapping
 "tests/*" = ["E402", "B011"]
 "henxels/__init__.py" = ["F401"]
 "henxels/statements/__init__.py" = ["F401"]
+
+[tool.pymarkdown]
+extensions.front-matter.enabled = true
+plugins.md013.enabled = false
+plugins.md025.enabled = false

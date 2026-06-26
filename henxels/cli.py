@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     pe = sub.add_parser("explain", help="show the henxels governing a path")
     pe.add_argument("path")
     pe.add_argument("--config", default=None)
+    pe.add_argument("--json", action="store_true", help="machine-readable output for agent tooling")
     pe.set_defaults(func=cmd_explain)
 
     pcat = sub.add_parser("catalogue", help="browse the statements you can use")
@@ -162,7 +163,14 @@ def cmd_explain(args) -> int:
     except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
-    print(explain_path(contract, args.path))
+    if args.json:
+        import json
+
+        from henxels.explain import explain_data
+
+        print(json.dumps(explain_data(contract, args.path), indent=2))
+    else:
+        print(explain_path(contract, args.path))
     return 0
 
 

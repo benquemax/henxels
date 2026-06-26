@@ -27,6 +27,19 @@ def explain_path(contract: Contract, rel_path: str) -> str:
     return "\n".join(lines)
 
 
+def explain_data(contract: Contract, rel_path: str) -> dict:
+    """Structured form of explain (for `--json` / agent tool integration)."""
+    path = str(rel_path).replace("\\", "/").strip("/")
+    return {
+        "path": path,
+        "henxels": [
+            {"henxel": hx.text, "in": hx.locations, "level": hx.level, "statements": hx.statements}
+            for hx in contract.henxels
+            if _path_in(path, hx.locations)
+        ],
+    }
+
+
 def _path_in(path: str, locations: list[str]) -> bool:
     return any(loc.governs(path) for loc in parse_all(locations))
 
