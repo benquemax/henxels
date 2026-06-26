@@ -133,6 +133,44 @@ only what you need. Return `None`/`True` to pass, or a string instruction to fai
 
 ---
 
+## Example: keeping an LLM wiki from scattering
+
+An **LLM wiki** — a markdown knowledge base an agent reads and writes (the pattern
+popularized by Andrej Karpathy) — is a perfect henxels use case. The idea is great, but
+small models drift hard: they write against the conventions, and knowledge that belongs
+in **one** page ends up **scattered across several near-duplicate files**. henxels gives
+the wiki a structure the agent has to follow, and warns it the moment it's about to
+fragment a topic.
+
+```yaml
+settings:
+  confirm_before_deleting: { over_lines: 10 }    # don't lose knowledge to a diff slip
+  warn_about_similar_files:                        # the anti-scatter henxel: nudges the
+    above: 0.82                                    # agent to UPDATE a page, not clone it
+    ignore: ["**/index.md"]
+
+henxels:
+  - henxel: "Every wiki page is kebab-case markdown with findable metadata"
+    in: ./pages/*
+    filename_casing: kebab-case
+    allowed_filetypes: [.md]
+    required_frontmatter: [title, tags, updated]
+  - henxel: "Pages are clean markdown with no dead links"
+    in: ./pages/*
+    markdown_lint: true
+    links_resolve: true          # a custom check (see "Custom checks" above)
+  - henxel: "The wiki has a single index"
+    in: ./pages
+    required_files: index.md
+```
+
+Because the contract is mirrored into `AGENTS.md`, the agent reads *"one page per topic,
+kebab-case, with these fields"* **before** it writes — and `warn_about_similar_files`
+catches it when it's about to create the fifth slightly-different page about the same
+thing. Strong guidance is exactly what small LLMs need to stay tidy.
+
+---
+
 ## Guards & bless
 
 `settings` can guard hard-to-undo actions. They don't forbid — they make you mean it:
