@@ -193,7 +193,7 @@ henxels thrives on contributions. **We'd rather get a ready-to-merge PR than an 
 If you (or your agent) write a check that's *reusable* — general, not tied to your repo —
 contribute it upstream: `henxels contribute`. Quality gates (ruff + the test suite) run
 in pre-commit and CI, so a green local run means your PR is merge-ready. See
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+[`CONTRIBUTING.md`](https://github.com/benquemax/henxels/blob/main/CONTRIBUTING.md).
 
 ---
 

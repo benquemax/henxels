@@ -75,6 +75,10 @@ tests/              one module per unit
   humans. Never put banners/wordplay into machine-readable output.
 - Contributions: reusable statements go upstream (see `CONTRIBUTING.md`); ad-hoc ones
   stay in `henxels_checks.py`.
+- **`README.md` links must be absolute** (`https://github.com/benquemax/henxels/...`),
+  never repo-relative. The README is the long-description on PyPI and npm, where
+  relative links are dead. Absolute links work on GitHub too, so use them everywhere in
+  the README.
 
 <!-- henxels:begin -->
 ## The contract (henxels)
