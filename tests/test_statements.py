@@ -35,6 +35,11 @@ def test_casing_skips_dunder(tmp_path):
     assert run("filename_casing", "snake_case", scope_for(tmp_path, {"__init__.py": "x"})) == []
 
 
+def test_casing_allows_leading_underscore(tmp_path):
+    # `_helpers.py` / `_private.py` are idiomatic Python, not violations
+    assert run("filename_casing", "snake_case", scope_for(tmp_path, {"a/_helpers.py": "x"}, ["a"])) == []
+
+
 # --- files_are (MATCH: extension or glob, list = OR) ---------------------
 
 def test_files_are_extension(tmp_path):

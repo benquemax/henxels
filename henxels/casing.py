@@ -5,12 +5,15 @@ from __future__ import annotations
 import re
 
 # Keys are the values accepted by the `casing:` statement (and the schema enum).
+# snake_case / SCREAMING_SNAKE_CASE permit leading underscores — `_private.py` and
+# `_helpers.py` are idiomatic Python, not naming violations. (Dunder files like
+# __init__.py are exempted separately, in is_dunder.)
 NAMING_CONVENTIONS: dict[str, str] = {
-    "snake_case": r"^[a-z0-9]+(_[a-z0-9]+)*$",
+    "snake_case": r"^_*[a-z0-9]+(_[a-z0-9]+)*$",
     "kebab-case": r"^[a-z0-9]+(-[a-z0-9]+)*$",
     "camelCase": r"^[a-z][a-zA-Z0-9]*$",
     "PascalCase": r"^[A-Z][a-zA-Z0-9]*$",
-    "SCREAMING_SNAKE_CASE": r"^[A-Z0-9]+(_[A-Z0-9]+)*$",
+    "SCREAMING_SNAKE_CASE": r"^_*[A-Z0-9]+(_[A-Z0-9]+)*$",
     "any": r".*",
 }
 
