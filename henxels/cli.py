@@ -1,11 +1,16 @@
-"""henxels command-line interface.
+"""henxels command-line interface (v2).
 
-    henxels check [--all|--staged] [paths...]   validate against the contract
-    henxels explain <path>                       what governs this location
+    henxels init                       scaffold contract + hooks + AGENTS.md digest
+    henxels check [--all|--staged] […] run the contract (every henxel is a test)
+    henxels explain <path>             what governs this location
+    henxels catalogue                  browse the statements you can use
+    henxels create-new-statement <n>   scaffold a local custom statement
+    henxels contribute [name]          how to upstream a reusable statement
+    henxels bless <push|delete>        consciously override a protection
+    henxels sync                       refresh the AGENTS.md digest
+    henxels doctor                     check the setup
 
-(init / bless / sync / doctor arrive in later phases.)
-
-Exit codes: 0 = clean, 1 = a henxel snapped (block), 2 = usage/config problem.
+Exit codes: 0 = clean, 1 = a henxel snapped, 2 = usage/contract problem.
 """
 
 from __future__ import annotations
@@ -14,13 +19,20 @@ import argparse
 import sys
 from pathlib import Path
 
-from henxels.checker import check_paths
-from henxels.config.load import Config, ConfigError, find_config, load_config
+from henxels import settings
+from henxels.contract import (
+    Contract,
+    ContractError,
+    apply_imports,
+    find_contract,
+    load_contract,
+)
 from henxels.engine import gitinfo
 from henxels.engine.discover import discover
 from henxels.engine.report import is_fancy, render, render_summary, summarize
 from henxels.explain import explain_path
 from henxels.findings import Finding
+from henxels.runner import run_contract
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,37 +43,47 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command")
 
     pi = sub.add_parser("init", help="scaffold the contract, hooks, and AGENTS.md digest")
-    pi.add_argument("--no-hooks", action="store_true", help="don't install git hooks")
-    pi.add_argument("--no-digest", action="store_true", help="don't write AGENTS.md")
-    pi.add_argument("--force", action="store_true", help="overwrite an existing henxels.yaml")
+    pi.add_argument("--no-hooks", action="store_true")
+    pi.add_argument("--no-digest", action="store_true")
+    pi.add_argument("--force", action="store_true")
     pi.set_defaults(func=cmd_init)
+
+    pc = sub.add_parser("check", help="run the contract")
+    pc.add_argument("paths", nargs="*")
+    pc.add_argument("--all", action="store_true")
+    pc.add_argument("--staged", action="store_true")
+    pc.add_argument("--config", default=None)
+    pc.add_argument("--plain", action="store_true")
+    pc.set_defaults(func=cmd_check)
+
+    pe = sub.add_parser("explain", help="show the henxels governing a path")
+    pe.add_argument("path")
+    pe.add_argument("--config", default=None)
+    pe.set_defaults(func=cmd_explain)
+
+    pcat = sub.add_parser("catalogue", help="browse the statements you can use")
+    pcat.set_defaults(func=cmd_catalogue)
+
+    pn = sub.add_parser("create-new-statement", help="scaffold a custom statement")
+    pn.add_argument("name")
+    pn.set_defaults(func=cmd_create_statement)
+
+    pcon = sub.add_parser("contribute", help="how to upstream a reusable statement")
+    pcon.add_argument("name", nargs="?", default=None)
+    pcon.set_defaults(func=cmd_contribute)
+
+    pb = sub.add_parser("bless", help="consciously override a protection")
+    pb.add_argument("action", choices=["push", "delete"])
+    pb.set_defaults(func=cmd_bless)
+
+    ps = sub.add_parser("sync", help="refresh the AGENTS.md digest")
+    ps.add_argument("--config", default=None)
+    ps.add_argument("--target", default="AGENTS.md")
+    ps.set_defaults(func=cmd_sync)
 
     pd = sub.add_parser("doctor", help="check that henxels is correctly set up")
     pd.set_defaults(func=cmd_doctor)
 
-    pc = sub.add_parser("check", help="validate files against the contract")
-    pc.add_argument("paths", nargs="*", help="specific paths to check")
-    pc.add_argument("--all", action="store_true", help="check every governed file")
-    pc.add_argument("--staged", action="store_true", help="check staged files only")
-    pc.add_argument("--config", default=None, help="path to henxels.yaml")
-    pc.add_argument("--plain", action="store_true", help="force plain output")
-    pc.set_defaults(func=cmd_check)
-
-    pe = sub.add_parser("explain", help="show the henxels governing a path")
-    pe.add_argument("path", help="the path to explain")
-    pe.add_argument("--config", default=None, help="path to henxels.yaml")
-    pe.set_defaults(func=cmd_explain)
-
-    pb = sub.add_parser("bless", help="consciously override a guard (push|delete)")
-    pb.add_argument("action", choices=["push", "delete", "commit"])
-    pb.set_defaults(func=cmd_bless)
-
-    ps = sub.add_parser("sync", help="refresh the contract digest in AGENTS.md")
-    ps.add_argument("--config", default=None, help="path to henxels.yaml")
-    ps.add_argument("--target", default="AGENTS.md", help="file to write the digest into")
-    ps.set_defaults(func=cmd_sync)
-
-    # Hidden hook entrypoints (invoked by the installed git hooks).
     p_pc = sub.add_parser("_precommit")
     p_pc.set_defaults(func=cmd_precommit)
     p_pp = sub.add_parser("_prepush")
@@ -74,43 +96,109 @@ def main(argv: list[str] | None = None) -> int:
     return args.func(args)
 
 
-def _load(args, root: Path) -> Config:
-    path = Path(args.config) if args.config else find_config(root)
+# --- helpers -------------------------------------------------------------
+
+def _load(root: Path, config_path: str | None = None) -> Contract:
+    path = Path(config_path) if config_path else find_contract(root)
     if path is None:
-        raise ConfigError(
+        raise ContractError(
             "No contract found. Looked for henxels.yaml at the repo root.\n"
             "  Run `henxels init` to create one."
         )
-    return load_config(path)
+    contract = load_contract(path)
+    apply_imports(contract, root=root)
+    return contract
 
+
+def _emit(findings: list[Finding], plain: bool = False) -> int:
+    fancy = is_fancy() and not plain
+    text = render(findings, fancy=fancy)
+    if text:
+        print(text)
+        print()
+    print(render_summary(findings, fancy=fancy))
+    blocks, _ = summarize(findings)
+    return 1 if blocks else 0
+
+
+# --- commands ------------------------------------------------------------
 
 def cmd_check(args) -> int:
     root = Path.cwd()
     try:
-        config = _load(args, root)
-    except ConfigError as exc:
+        contract = _load(root, args.config)
+    except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
 
-    rel_paths, check_existence = _select_files(args, root)
+    if args.paths:
+        files = [_rel(p, root) for p in args.paths]
+    elif args.staged:
+        files = gitinfo.staged_files(root)
+    elif args.all:
+        files = discover(root)
+    elif gitinfo.is_git_repo(root):
+        files = gitinfo.staged_files(root)
+    else:
+        files = discover(root)
 
-    if args.paths or args.staged:
-        if not rel_paths:
-            print("Nothing to check.")
-            return 0
+    if (args.paths or args.staged) and not files:
+        print("Nothing to check.")
+        return 0
 
-    findings = check_paths(config, root, rel_paths, check_existence=check_existence)
+    findings = run_contract(contract, root, files)
+    sim = settings.similarity(contract)
+    if sim:
+        from henxels.similarity import warn_similar
+
+        findings.extend(warn_similar(sim, root, files))
     return _emit(findings, plain=args.plain)
 
 
 def cmd_explain(args) -> int:
     root = Path.cwd()
     try:
-        config = _load(args, root)
-    except ConfigError as exc:
+        contract = _load(root, args.config)
+    except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
-    print(explain_path(config, args.path))
+    print(explain_path(contract, args.path))
+    return 0
+
+
+def cmd_catalogue(args) -> int:
+    from henxels.catalogue import render_catalogue
+
+    root = Path.cwd()
+    try:
+        _load(root)  # load + import so custom statements show up
+    except ContractError:
+        pass
+    print(render_catalogue())
+    return 0
+
+
+def cmd_create_statement(args) -> int:
+    from henxels.catalogue import create_statement_scaffold
+
+    path, action = create_statement_scaffold(args.name, Path.cwd())
+    print(f"✓ {path.name} {action} — added a template statement '{args.name}'.")
+    print("Next:")
+    print("  • Fill in the function (it's auto-loaded — no imports: needed).")
+    print(f"  • Use it in a henxel:  {args.name}: <param>")
+    print(f"  • Reusable beyond this repo?  henxels contribute {args.name}")
+    return 0
+
+
+def cmd_contribute(args) -> int:
+    from henxels.catalogue import contribute_guide
+
+    root = Path.cwd()
+    try:
+        _load(root)
+    except ContractError:
+        pass
+    print(contribute_guide(args.name))
     return 0
 
 
@@ -119,24 +207,17 @@ def cmd_init(args) -> int:
     from henxels.scaffold import init
 
     root = Path.cwd()
-    fancy = is_fancy()
-    if fancy:
+    if is_fancy():
         print(BANNER)
         print()
 
-    report = init(
-        root,
-        install_git_hooks=not args.no_hooks,
-        write_digest=not args.no_digest,
-        force=args.force,
-    )
+    report = init(root, install_git_hooks=not args.no_hooks, write_digest=not args.no_digest, force=args.force)
 
     state, info = report["contract"]
     if state == "created":
         print(f"✓ henxels.yaml created for a {info} project")
     else:
-        print(f"• henxels.yaml already exists ({info}) — left as-is (use --force to replace)")
-
+        print("• henxels.yaml already exists — left as-is (use --force to replace)")
     hooks = report.get("hooks")
     if hooks is None:
         print("• git hooks: skipped (not a git repo, or --no-hooks)")
@@ -144,18 +225,15 @@ def cmd_init(args) -> int:
         for hook, outcome in hooks.items():
             mark = "✓" if outcome in ("installed", "updated") else "•"
             print(f"{mark} git hook {hook}: {outcome}")
-
     if report.get("digest"):
         print(f"✓ AGENTS.md {report['digest']} — agents now see the contract")
 
     print()
     print("Next:")
-    print("  • Tailor the contract: edit henxels.yaml (it's commented; enums autocomplete in your editor).")
+    print("  • Tailor the rules: edit henxels.yaml (browse `henxels catalogue` for statements).")
     print("  • Ask what governs a spot: henxels explain <path>")
     print("  • Validate everything:    henxels check --all")
-    print("  • Re-sync the digest after edits: henxels sync")
-    print()
-    print("To disobey a rule, change henxels.yaml — that's the whole idea.")
+    print("  • To disobey a rule, change henxels.yaml — that's the whole idea.")
     return 0
 
 
@@ -163,52 +241,18 @@ def cmd_doctor(args) -> int:
     from henxels.doctor import diagnose
 
     fancy = is_fancy()
-    checks = diagnose(Path.cwd())
     all_ok = True
-    for c in checks:
+    for c in diagnose(Path.cwd()):
         mark = "✓" if c.ok else "✗"
-        if not c.ok:
-            all_ok = False
+        all_ok = all_ok and c.ok
         tail = f" — {c.detail}" if c.detail else ""
-        line = f"  {mark} {c.label}{tail}"
         if fancy:
-            line = f"  \033[{'32' if c.ok else '31'}m{mark}\033[0m {c.label}{tail}"
-        print(line)
+            print(f"  \033[{'32' if c.ok else '31'}m{mark}\033[0m {c.label}{tail}")
+        else:
+            print(f"  {mark} {c.label}{tail}")
     print()
     print("henxels is ready." if all_ok else "Some checks need attention (see above).")
     return 0 if all_ok else 1
-
-
-def cmd_bless(args) -> int:
-    from henxels import bless as bless_mod
-    from henxels.engine import gitinfo
-    from henxels.rules.guard import collect_deletions
-
-    root = Path.cwd()
-    if not gitinfo.is_git_repo(root):
-        print("Not a git repo — nothing to bless here.", file=sys.stderr)
-        return 2
-
-    if args.action == "push":
-        fingerprint = gitinfo.head_sha(root) or "no-head"
-        bless_mod.bless(root, "push", fingerprint)
-        print("✓ push blessed. Your next `git push` will go through (once).")
-        return 0
-
-    if args.action == "delete":
-        config = _safe_load(root)
-        deletions = collect_deletions(config, root) if config else None
-        if deletions is None or deletions.empty:
-            print("Nothing staged that needs a delete-bless.")
-            return 0
-        bless_mod.bless(root, "delete", deletions.fingerprint())
-        lost = deletions.files + [p for p, _ in deletions.lines]
-        print(f"✓ deletion blessed for: {', '.join(lost)}")
-        print("  Your next commit (with exactly these deletions) will go through.")
-        return 0
-
-    print("Commit guard is off by default; nothing to bless.")
-    return 0
 
 
 def cmd_sync(args) -> int:
@@ -216,12 +260,42 @@ def cmd_sync(args) -> int:
 
     root = Path.cwd()
     try:
-        config = _load(args, root)
-    except ConfigError as exc:
+        contract = _load(root, args.config)
+    except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
-    action = sync_file(root / args.target, config)
+    action = sync_file(root / args.target, contract)
     print(f"✓ {args.target} {action} — contract digest is in sync.")
+    return 0
+
+
+def cmd_bless(args) -> int:
+    from henxels import bless as bless_mod
+    from henxels.guard import collect_deletions
+
+    root = Path.cwd()
+    if not gitinfo.is_git_repo(root):
+        print("Not a git repo — nothing to bless here.", file=sys.stderr)
+        return 2
+
+    if args.action == "push":
+        bless_mod.bless(root, "push", gitinfo.head_sha(root) or "no-head")
+        print("✓ push blessed. Your next `git push` will go through (once).")
+        return 0
+
+    contract = None
+    try:
+        contract = _load(root)
+    except ContractError:
+        pass
+    over = (settings.delete_protection(contract) or {"over_lines": 5})["over_lines"] if contract else 5
+    deletions = collect_deletions(root, over)
+    if deletions.empty:
+        print("Nothing staged that needs a delete-bless.")
+        return 0
+    bless_mod.bless(root, "delete", deletions.fingerprint())
+    lost = deletions.files + [p for p, _ in deletions.lines]
+    print(f"✓ deletion blessed for: {', '.join(lost)}")
     return 0
 
 
@@ -241,47 +315,12 @@ def cmd_prepush(args) -> int:
     return code
 
 
-def _safe_load(root: Path) -> Config | None:
-    path = find_config(root)
-    if path is None:
-        return None
-    try:
-        return load_config(path)
-    except ConfigError:
-        return None
-
-
-def _select_files(args, root: Path) -> tuple[list[str], bool]:
-    """Decide which files to check and whether to run folder-level existence."""
-    if args.paths:
-        return [_rel(p, root) for p in args.paths], False
-    if args.staged:
-        return gitinfo.staged_files(root), False
-    if args.all:
-        return discover(root), True
-    # Default: staged in a git repo, otherwise a full scan.
-    if gitinfo.is_git_repo(root):
-        return gitinfo.staged_files(root), False
-    return discover(root), True
-
-
 def _rel(p: str, root: Path) -> str:
     path = Path(p)
     try:
         return path.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
         return path.as_posix()
-
-
-def _emit(findings: list[Finding], plain: bool = False) -> int:
-    fancy = is_fancy() and not plain
-    text = render(findings, fancy=fancy)
-    if text:
-        print(text)
-        print()
-    print(render_summary(findings, fancy=fancy))
-    blocks, _ = summarize(findings)
-    return 1 if blocks else 0
 
 
 if __name__ == "__main__":  # pragma: no cover

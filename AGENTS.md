@@ -38,68 +38,77 @@ uv run pytest            # run the suite
 uv run henxels check     # dogfood the contract on this repo
 ```
 
+## Mental model
+
+A **henxel** is a rule: a sentence + an `in:` scope + one or more **statements** that
+must all pass. A **statement** is a named verification function (the reusable unit).
+`settings:` holds behaviours (push/delete/stage protections, similarity) — the things
+that aren't tests. Logic lives inside statement functions, never in the YAML.
+
 ## Code layout
 
 ```
 henxels/
-  cli.py            dispatch: init | check | explain | bless | sync | doctor
-  config/           load.py (parse), tree.py (closest-rule resolver)
-  engine/           discover.py (walk files), report.py (fancy/plain output)
-  rules/            placement, existence, naming, guard, duplication (one henxel each)
-  util/             glob.py and small helpers
-  schema/           henxels.schema.json (editor autocomplete + enum validation)
-  plugins/          markdown, frontmatter (opt-in, demoted optionals)
-tests/              mirrors the package; one test module per unit
+  cli.py            dispatch: init | check | explain | catalogue |
+                    create-new-statement | contribute | bless | sync | doctor
+  contract.py       parse settings + henxels list + imports (auto-loads custom checks)
+  runner.py         run each henxel's statements (name-injected args) into findings
+  statements/       registry (@statement), scope (the injected context), builtins
+  settings.py       read behaviours from settings:
+  guard.py          push/delete protections (intercept a git action)
+  hookrun.py        what pre-commit/pre-push run
+  commands.py       run_before_commit/push command gates
+  similarity.py     duplication warnings over committed files
+  catalogue.py      browse / scaffold / contribute statements
+  engine/           discover, gitinfo, report (fancy/plain)
+  casing.py         naming conventions; util/glob.py; schema/henxels.schema.json
+tests/              one module per unit
 ```
-
-> Note: the rule types live in `henxels/rules/` (not `henxels/henxels/`) to avoid a
-> package-name collision; everything else follows the plan.
 
 ## Conventions
 
 - Python ≥ 3.10, standard library first; new third-party deps need a reason.
+- `ruff` is the arbiter of style (runs in pre-commit + CI). Keep it green.
+- A statement returns its **violations as instructions** (empty = pass); the henxel's
+  sentence is always shown, so output is actionable for a small model.
 - Output is **plain** when not a TTY or when `NO_COLOR`/`CI` is set; fancy only for
   humans. Never put banners/wordplay into machine-readable output.
-- Every henxel violation message carries: what henxel, the `reason`, the `steer`,
-  and how to consciously override (edit the contract, or `henxels bless …`).
+- Contributions: reusable statements go upstream (see `CONTRIBUTING.md`); ad-hoc ones
+  stay in `henxels_checks.py`.
 
 <!-- henxels:begin -->
-## Structure contract (henxels)
+## The contract (henxels)
 
 _Auto-generated from `henxels.yaml` by `henxels sync`. Do not edit by hand._
 
-Put the right thing in the right place. The **closest rule in the tree wins**.
-To disobey a rule, change `henxels.yaml` — that is the only sanctioned escape.
-Run `henxels explain <path>` before creating a file to see what governs that spot.
+Each bullet is a **henxel** (a rule). To disobey one, change `henxels.yaml` —
+that is the only sanctioned escape. Run `henxels explain <path>` before creating
+a file to see what governs that spot.
 
-### Where things live
+### Rules
 
-- `henxels/` — files are snake_case, the package — one module per concern
-  - `henxels/rules/` — files are snake_case
-  - `henxels/config/` — files are snake_case
-  - `henxels/engine/` — files are snake_case
-  - `henxels/util/` — files are snake_case
-  - `henxels/plugins/` — files are snake_case
-- `tests/` — files are snake_case, TDD suite — mirrors the package; runs in pre-commit
-- `docs/` — files are kebab-case, user documentation — doubles as live test data
+- The package code is snake_case (in henxels)
+- Tests are snake_case and live in tests/ (in tests)
+- Docs are kebab-case markdown, each with a title and summary (in docs)
+- Project config lives only in pyproject.toml
+- The scratch folder must exist
+- The parking lot should exist (gitignored — only a reminder) _(warn)_
+- Code is clean and conventional (ruff) before every commit
+- The test suite passes before every commit
+- The contract holds before every push
 
-### Guards
+### Behaviours
 
-- **push**: blocked until `henxels bless push`
-- **stage**: ask the user first (don't do it reflexively)
-- **delete**: deleting files or removing >5 lines is blocked until `henxels bless delete`
+- ask the user before staging/pushing (don't `git add` reflexively)
+- push is blocked until `henxels bless push`
+- deleting files / removing many lines is blocked until `henxels bless delete`
+- warns when a new file looks like a near-copy of a committed one
 
-### Single source of truth
+### Custom henxels & contributing
 
-- project config lives only in `pyproject.toml` — don't create `setup.py`, `setup.cfg`
-
-### Must exist
-
-- `_temp/.gitkeep` — the scratch folder must exist (committed via .gitkeep)
-- `_todo.md` — the parking lot should exist locally _(warn)_
-
-### Checks run by the hooks
-
-- **pre_commit**: `uv run pytest -q`
-- **pre_push**: `uv run henxels check --all`
+Need a check that doesn't exist? Browse `henxels catalogue` first to reuse one.
+Still missing? `henxels create-new-statement <name>` scaffolds a local check
+(auto-loaded from `henxels_checks.py`). **If your check is reusable** — useful in
+other repos, not tied to this one — contribute it upstream with `henxels contribute`.
+We're in the agentic era: send a ready-to-merge PR instead of opening an issue.
 <!-- henxels:end -->

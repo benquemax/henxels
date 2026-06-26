@@ -1,34 +1,48 @@
 ---
 title: Writing henxels
-summary: The rule vocabulary — forbid, require, naming, canonical, guards, similarity — and how the closest rule wins.
+summary: A henxel is a sentence plus statements that must all pass; statements are reusable functions you can extend.
 ---
 
 # Writing henxels
 
-A *henxel* is one rule in the contract. The closest rule in the tree governs a path,
-and rules cascade into subfolders.
-
-## The vocabulary
-
-- **forbid** — a kind of file may not live in this folder subtree. Give a `reason`
-  and a `steer` so the agent knows where it should go instead.
-- **require** — this folder (or the repo root) must contain a named file. Add
-  `severity: warn` for things that should exist locally but may be absent in CI.
-- **naming** — files here follow a convention: `snake_case`, `kebab-case`,
-  `camelCase`, `PascalCase`, `SCREAMING_SNAKE_CASE`, or `any`.
-- **canonical** — a role lives in exactly one file; look-alikes are forbidden.
-- **guards** — `push`, `delete`, and `stage` turn destructive reflexes into a
-  conscious act (override once with `henxels bless`).
-- **similarity** — warns when a new file looks like a near-copy of a committed one.
-
-## Checks at commit time
-
-Wire your test suite into the contract so the pre-commit hook runs it:
+A **henxel** is one rule on the whiteboard: a sentence (which is also the failure
+message), an optional `in:` scope, and one or more **statements** that must all pass.
+A statement is a named function with parameters.
 
 ```yaml
-checks:
-  pre_commit:
-    - "uv run pytest -q"
+henxels:
+  - henxel: "Docs are kebab-case markdown with a title"
+    in: docs
+    files_are: .md
+    casing: kebab-case
+    frontmatter_has: title
 ```
 
-The contract stays the single source of truth — even the test gate lives there.
+## Statements
+
+Run `henxels catalogue` to see the built-in standard library. A few:
+
+- **casing** — file names use a convention (`snake_case`, `kebab-case`, …).
+- **files_are** — every file is an extension or glob (a list means *any of*).
+- **frontmatter_has** — markdown declares these keys (a list means *all*).
+- **forbidden_files / forbidden_folders** — none of these may exist.
+- **required_files / required_folders** — these must exist.
+- **run_before_commit / run_before_push** — a command (tests, lints) must pass.
+
+Scalars stand in for one-item lists, so you never write `[x]`.
+
+## Custom statements
+
+Missing a check? Write one — it's three lines, auto-loaded from `henxels_checks.py`:
+
+```python
+from henxels import statement
+
+@statement("max_lines", help="source files stay under a line budget")
+def max_lines(param, file, scope):
+    if scope.line_count(file) > param:
+        return f"split it — keep under {param} lines"
+```
+
+Arguments are injected by name; return a string instruction to fail. If your statement
+is reusable beyond this repo, contribute it: `henxels contribute`.

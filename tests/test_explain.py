@@ -1,32 +1,23 @@
-"""`henxels explain` — plain-language contract for a path."""
+"""`henxels explain` (v2) — which henxels govern a path."""
 
-from henxels.config.load import Config
+from henxels.contract import Contract, Henxel
 from henxels.explain import explain_path
 
-TREE = {
-    "src": {
-        "naming": "snake_case",
-        "forbid": [{"glob": "**/*_test.py", "reason": "tests live in tests/", "steer": "use tests/"}],
-        "api": {"require": [{"file": "handlers.py", "reason": "expose handlers"}]},
-    },
-}
+CONTRACT = Contract(henxels=[
+    Henxel(text="Docs are kebab-case markdown", locations=["docs"],
+           statements={"files_are": ".md", "casing": "kebab-case"}),
+    Henxel(text="No setup.py", locations=[""], statements={"forbidden_files": "setup.py"}),
+])
 
 
-def test_explain_forbidden_path():
-    out = explain_path(Config(tree=TREE), "src/api/foo_test.py")
-    assert "FORBIDDEN" in out
-    assert "tests live in tests/" in out
-    assert "use tests/" in out
-
-
-def test_explain_normal_path_lists_rules():
-    out = explain_path(Config(tree=TREE), "src/api/handlers.py")
-    assert "naming: files here are snake_case" in out
-    assert "this folder must contain:" in out
-    assert "handlers.py" in out
-    assert "FORBIDDEN" not in out
+def test_explain_lists_matching_henxels():
+    out = explain_path(CONTRACT, "docs/intro.md")
+    assert "Docs are kebab-case markdown" in out
+    assert "casing: kebab-case" in out
+    # root-scoped henxel also applies everywhere
+    assert "No setup.py" in out
 
 
 def test_explain_silent_location():
-    out = explain_path(Config(tree=TREE), "random/file.py")
+    out = explain_path(Contract(henxels=[Henxel(text="x", locations=["src"], statements={})]), "docs/x.md")
     assert "no henxels apply" in out

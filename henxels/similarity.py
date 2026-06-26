@@ -11,7 +11,6 @@ from __future__ import annotations
 import difflib
 from pathlib import Path
 
-from henxels.config.load import Config
 from henxels.engine import gitinfo
 from henxels.findings import WARN, Finding
 from henxels.util.glob import glob_match
@@ -69,23 +68,21 @@ def find_duplicates(
     return results
 
 
-def similarity_findings(config: Config, root: Path | str, candidates: list[str]) -> list[Finding]:
-    """Warn about candidates that look like duplicates of committed files."""
-    sim = config.similarity
+def warn_similar(sim: dict | None, root: Path | str, candidates: list[str]) -> list[Finding]:
+    """Settings-driven duplication warnings (v2). ``sim`` = {'above', 'ignore'} or None."""
     if not sim:
         return []
-    threshold = float(sim.get("warn_above", 0.85))
-    excludes = sim.get("exclude", []) or []
+    threshold = float(sim.get("above", 0.85))
+    excludes = sim.get("ignore", []) or []
     findings: list[Finding] = []
     for cand, other, ratio in find_duplicates(root, candidates, threshold, excludes):
         findings.append(
             Finding(
                 level=WARN,
-                henxel="similarity",
+                henxel=f"Possible duplicate: {cand}",
                 path=cand,
-                message=f"~{round(ratio * 100)}% similar to {other}",
-                reason="possible duplicate — divergence usually starts with a second copy",
-                steer=f"reuse {other} instead of a parallel copy, or confirm it's intentional",
+                message="",
+                details=[f"~{round(ratio * 100)}% similar to {other} — reuse it, or confirm this copy is intentional"],
             )
         )
     return findings

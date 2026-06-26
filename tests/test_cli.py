@@ -1,77 +1,77 @@
-"""End-to-end CLI behavior for `check` and `explain`."""
+"""End-to-end CLI (v2): check / explain / catalogue / create-new-statement."""
 
 import pytest
 
 from henxels.cli import main
 
 CONTRACT = """
-henxels: 1
-tree:
-  src:
-    naming: snake_case
-    forbid:
-      - glob: "**/*_test.py"
-        reason: "tests live in tests/"
-        steer: "use tests/"
-    api:
-      require:
-        - file: handlers.py
-          reason: "expose handlers"
+settings:
+  warn_about_similar_files:
+    above: 0.85
+henxels:
+  - henxel: "Docs are kebab-case markdown with a title"
+    in: docs
+    files_are: .md
+    casing: kebab-case
+    frontmatter_has: title
+  - henxel: "No setup.py"
+    forbidden_files: setup.py
 """
 
 
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     (tmp_path / "henxels.yaml").write_text(CONTRACT, encoding="utf-8")
-    (tmp_path / "src" / "api").mkdir(parents=True)
+    (tmp_path / "docs").mkdir()
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
 
 def test_check_clean(project, capsys):
-    (project / "src" / "api" / "handlers.py").write_text("x", encoding="utf-8")
-    code = main(["check", "--all", "--plain"])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert "all henxels hold" in out
+    (project / "docs" / "intro.md").write_text("---\ntitle: t\n---\n# h\n", encoding="utf-8")
+    assert main(["check", "--all", "--plain"]) == 0
+    assert "all henxels hold" in capsys.readouterr().out
 
 
-def test_check_blocks_placement(project, capsys):
-    (project / "src" / "api" / "handlers.py").write_text("x", encoding="utf-8")
-    (project / "src" / "api" / "thing_test.py").write_text("x", encoding="utf-8")
+def test_check_blocks_with_instructions(project, capsys):
+    (project / "docs" / "Bad_Name.md").write_text("# no frontmatter\n", encoding="utf-8")
     code = main(["check", "--all", "--plain"])
     out = capsys.readouterr().out
     assert code == 1
-    assert "placement" in out
-    assert "tests live in tests/" in out
+    assert "Docs are kebab-case markdown with a title" in out
+    assert "Bad_Name" in out
+    assert "title" in out
 
 
-def test_check_missing_required(project, capsys):
-    # handlers.py absent -> require henxel snaps
-    code = main(["check", "--all", "--plain"])
+def test_check_forbidden_file(project, capsys):
+    (project / "setup.py").write_text("x\n", encoding="utf-8")
+    assert main(["check", "--all", "--plain"]) == 1
+    assert "No setup.py" in capsys.readouterr().out
+
+
+def test_explain(project, capsys):
+    assert main(["explain", "docs/intro.md"]) == 0
     out = capsys.readouterr().out
-    assert code == 1
-    assert "require" in out
-    assert "handlers.py" in out
+    assert "Docs are kebab-case markdown" in out
 
 
-def test_check_specific_path_skips_existence(project, capsys):
-    code = main(["check", "--plain", "src/api/notes.py"])
+def test_catalogue_lists_builtins(project, capsys):
+    assert main(["catalogue"]) == 0
     out = capsys.readouterr().out
-    assert code == 0  # naming ok, existence not run for explicit paths
-    assert "all henxels hold" in out
+    assert "casing" in out and "forbidden_files" in out
+    assert "create-new-statement" in out
 
 
-def test_explain_command(project, capsys):
-    code = main(["explain", "src/api/foo_test.py"])
+def test_create_new_statement(project, capsys):
+    assert main(["create-new-statement", "max_lines"]) == 0
     out = capsys.readouterr().out
-    assert code == 0
-    assert "FORBIDDEN" in out
+    assert "henxels_checks.py" in out
+    text = (project / "henxels_checks.py").read_text()
+    assert "@statement(\"max_lines\"" in text
+    assert "contribute" in text
 
 
 def test_check_no_contract(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    code = main(["check", "--all"])
-    err = capsys.readouterr().err
-    assert code == 2
-    assert "No contract found" in err
+    assert main(["check", "--all"]) == 2
+    assert "No contract found" in capsys.readouterr().err

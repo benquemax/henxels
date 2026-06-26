@@ -14,12 +14,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Opt-in markdown/frontmatter plugins (demoted from core).
-markdown = ["pymarkdownlnt>=0.0", "python-frontmatter>=1.1.0"]
 dev = [
     "pytest>=7.0",
-    "pymarkdownlnt>=0.0",
-    "python-frontmatter>=1.1.0",
+    "ruff>=0.6",
 ]
 
 [project.scripts]
@@ -34,3 +31,16 @@ henxels = ["schema/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]  # line length is advisory; the formatter handles wrapping
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402", "B011"]
+"henxels/__init__.py" = ["F401"]
+"henxels/statements/__init__.py" = ["F401"]

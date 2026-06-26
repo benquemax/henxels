@@ -19,14 +19,14 @@ teaching git hooks, and drops a contract digest into `AGENTS.md`.
 
 ## Tailor the contract
 
-Open `henxels.yaml` and shape the `tree:` to your real folders. Each rule carries a
-plain-language `reason` and `steer`, so the contract reads like a document and your
-editor autocompletes the enum values from the bundled schema.
+Open `henxels.yaml` and shape the rule list to your repo. Each henxel is a sentence plus
+statements; run `henxels catalogue` to see the statements you can use, and your editor
+autocompletes them from the bundled schema.
 
 ## Validate
 
 ```bash
-henxels check --all     # everything
+henxels check --all          # run every henxel
 henxels explain src/foo.py   # what governs this spot, in plain words
 ```
 
