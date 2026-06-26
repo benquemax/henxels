@@ -14,6 +14,7 @@ from pathlib import Path
 
 from henxels.engine import gitinfo
 from henxels.findings import BLOCK, WARN, Finding
+from henxels.invocation import henxels_cmd
 
 
 @dataclass
@@ -53,7 +54,7 @@ def deletion_finding(deletions: Deletions) -> Finding:
         path="",
         message="",
         details=details,
-        steer="henxels bless delete   (then commit again)",
+        steer=f"{henxels_cmd()} bless delete   (then commit again)",
     )
 
 
@@ -64,7 +65,7 @@ def push_finding() -> Finding:
         path="",
         message="",
         details=["reflexive pushes leak half-done work and rewrite shared history"],
-        steer="henxels bless push   (then push again)",
+        steer=f"{henxels_cmd()} bless push   (then push again)",
     )
 
 

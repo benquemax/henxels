@@ -24,13 +24,13 @@ def _script(subcommand: str) -> str:
         "# Runs the henxels contract before this git action. Override consciously\n"
         "# with `henxels bless <action>` or by editing henxels.yaml.\n"
         "if command -v henxels >/dev/null 2>&1; then\n"
-        f'  exec henxels {subcommand} "$@"\n'
+        f'  HENXELS_CMD="henxels" exec henxels {subcommand} "$@"\n'
         "elif command -v uv >/dev/null 2>&1 && [ -f pyproject.toml ]; then\n"
-        f'  exec uv run henxels {subcommand} "$@"\n'
+        f'  HENXELS_CMD="uv run henxels" exec uv run henxels {subcommand} "$@"\n'
         "elif command -v python3 >/dev/null 2>&1; then\n"
-        f'  exec python3 -m henxels {subcommand} "$@"\n'
+        f'  HENXELS_CMD="python3 -m henxels" exec python3 -m henxels {subcommand} "$@"\n'
         "else\n"
-        f'  exec python -m henxels {subcommand} "$@"\n'
+        f'  HENXELS_CMD="python -m henxels" exec python -m henxels {subcommand} "$@"\n'
         "fi\n"
     )
 

@@ -58,3 +58,9 @@ def test_summarize_counts():
 
 def test_summary_all_clear():
     assert "hold" in render_summary([], fancy=False)
+
+
+def test_summary_block_says_held_not_snapped():
+    s = render_summary([Finding(BLOCK, "Push is guarded", "", "m")], fancy=False)
+    assert "held by 1 henxel" in s
+    assert "snapped" not in s

@@ -10,7 +10,7 @@
     henxels sync                       refresh the AGENTS.md digest
     henxels doctor                     check the setup
 
-Exit codes: 0 = clean, 1 = a henxel snapped, 2 = usage/contract problem.
+Exit codes: 0 = clean, 1 = held by a henxel, 2 = usage/contract problem.
 """
 
 from __future__ import annotations
@@ -191,13 +191,14 @@ def cmd_catalogue(args) -> int:
 
 def cmd_create_statement(args) -> int:
     from henxels.catalogue import create_statement_scaffold
+    from henxels.invocation import henxels_cmd
 
     path, action = create_statement_scaffold(args.name, Path.cwd())
     print(f"✓ {path.name} {action} — added a template statement '{args.name}'.")
     print("Next:")
     print("  • Fill in the function (it's auto-loaded — no imports: needed).")
     print(f"  • Use it in a henxel:  {args.name}: <param>")
-    print(f"  • Reusable beyond this repo?  henxels contribute {args.name}")
+    print(f"  • Reusable beyond this repo?  {henxels_cmd()} contribute {args.name}")
     return 0
 
 
@@ -247,12 +248,17 @@ def cmd_init(args) -> int:
     if report.get("digest"):
         print(f"✓ AGENTS.md {report['digest']} — agents now see the contract")
 
+    from henxels.invocation import henxels_cmd
+
+    hx = henxels_cmd()
     print()
     print("Next:")
-    print("  • Tailor the rules: edit henxels.yaml (browse `henxels catalogue` for statements).")
-    print("  • Ask what governs a spot: henxels explain <path>")
-    print("  • Validate everything:    henxels check --all")
+    print(f"  • Tailor the rules: edit henxels.yaml (browse `{hx} catalogue` for statements).")
+    print(f"  • Ask what governs a spot: {hx} explain <path>")
+    print(f"  • Validate everything:    {hx} check --all")
     print("  • To disobey a rule, change henxels.yaml — that's the whole idea.")
+    if hx != "henxels":
+        print(f"  • Tip: `uv tool install henxels` (or pipx) puts `henxels` on your PATH so you can drop `{hx.rsplit(' ', 1)[0]} `.")
     return 0
 
 

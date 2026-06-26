@@ -27,10 +27,13 @@ def render_catalogue() -> str:
         lines += ["", "Custom (loaded from this repo):"]
         for d in custom:
             lines.append(f"  {d.name:<20} {d.help or '(no description)'}{_flags(d)}")
+    from henxels.invocation import henxels_cmd
+
+    hx = henxels_cmd()
     lines += [
         "",
-        "Reuse before reinventing. Missing one?  henxels create-new-statement <name>",
-        "Reusable beyond this repo?  henxels contribute  (send a ready-to-merge PR)",
+        f"Reuse before reinventing. Missing one?  {hx} create-new-statement <name>",
+        f"Reusable beyond this repo?  {hx} contribute  (send a ready-to-merge PR)",
     ]
     return "\n".join(lines)
 

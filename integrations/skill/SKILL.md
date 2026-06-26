@@ -28,7 +28,7 @@ Run:
 henxels check <path>      # or: henxels check --staged
 ```
 
-Exit code 1 means a henxel snapped; the output tells you which file and what to do.
+Exit code 1 means a henxel held you back; the output tells you which file and what to do.
 Fix it (or amend the contract) before moving on.
 
 ## Git etiquette

@@ -72,7 +72,8 @@ def render_summary(findings: list[Finding], fancy: bool = False) -> str:
         return _c("✓ all henxels hold", _GREEN, fancy)
     bits = []
     if blocks:
-        bits.append(_c(f"✗ {blocks} henxel{'s' if blocks != 1 else ''} snapped", _RED, fancy))
+        # The henxel didn't fail — it HELD you back from doing the wrong thing.
+        bits.append(_c(f"✗ held by {blocks} henxel{'s' if blocks != 1 else ''}", _RED, fancy))
     if warns:
         bits.append(_c(f"! {warns} warning{'s' if warns != 1 else ''}", _YELLOW, fancy))
     return "  ".join(bits)
