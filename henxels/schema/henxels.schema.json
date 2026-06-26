@@ -69,16 +69,16 @@
         "rule": { "type": "string" },
         "must": { "type": "string" },
         "description": { "type": "string" },
-        "in": { "$ref": "#/$defs/scalarOrList", "description": "where this henxel applies (default: whole repo)" },
+        "in": { "$ref": "#/$defs/scalarOrList", "description": "where this henxel applies: ./docs = that folder, ./docs/* = recursively, ./ = repo root, ./* = whole repo (default)" },
         "level": { "type": "string", "enum": ["block", "warn"] },
 
-        "casing": {
+        "filename_casing": {
           "description": "file names use this naming convention (list = any of)",
           "oneOf": [{ "$ref": "#/$defs/casingValue" }, { "type": "array", "items": { "$ref": "#/$defs/casingValue" } }]
         },
-        "files_are": { "$ref": "#/$defs/scalarOrList", "description": "every file is an extension/glob (list = OR)" },
-        "files_match_regex": { "$ref": "#/$defs/scalarOrList" },
-        "frontmatter_has": { "$ref": "#/$defs/scalarOrList", "description": "markdown declares these keys (list = all)" },
+        "allowed_filetypes": { "$ref": "#/$defs/scalarOrList", "description": "every file is one of these extensions/globs (list = OR)" },
+        "filename_matches_regex": { "$ref": "#/$defs/scalarOrList" },
+        "required_frontmatter": { "$ref": "#/$defs/scalarOrList", "description": "markdown declares these keys (list = all)" },
         "required_files": { "$ref": "#/$defs/scalarOrList" },
         "required_folders": { "$ref": "#/$defs/scalarOrList" },
         "only_these_folders": { "$ref": "#/$defs/scalarOrList" },

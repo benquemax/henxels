@@ -87,9 +87,9 @@ a file to see what governs that spot.
 
 ### Rules
 
-- The package code is snake_case (in henxels)
-- Tests are snake_case and live in tests/ (in tests)
-- Docs are kebab-case markdown, each with a title and summary (in docs)
+- The package code is snake_case (including subpackages) (in ./henxels/*)
+- Tests are snake_case and live in tests/ (in ./tests/*)
+- Docs are kebab-case markdown, each with a title and summary (in ./docs)
 - Project config lives only in pyproject.toml
 - The scratch folder must exist
 - The parking lot should exist (gitignored — only a reminder) _(warn)_

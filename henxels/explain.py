@@ -7,6 +7,7 @@ henxel whose ``in:`` covers the path and the statements it must satisfy.
 from __future__ import annotations
 
 from henxels.contract import Contract
+from henxels.locations import parse_all
 
 
 def explain_path(contract: Contract, rel_path: str) -> str:
@@ -27,10 +28,7 @@ def explain_path(contract: Contract, rel_path: str) -> str:
 
 
 def _path_in(path: str, locations: list[str]) -> bool:
-    for loc in locations:
-        if loc == "" or path == loc or path.startswith(loc + "/"):
-            return True
-    return False
+    return any(loc.governs(path) for loc in parse_all(locations))
 
 
 def _fmt(param) -> str:

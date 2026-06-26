@@ -40,7 +40,7 @@ def find_contract(start: Path | str = ".") -> Path | None:
 @dataclass
 class Henxel:
     text: str  # the sentence (and the failure message)
-    locations: list[str] = field(default_factory=lambda: [""])  # "" = repo root
+    locations: list[str] = field(default_factory=lambda: ["./*"])  # raw `in:` specs
     level: str = "block"  # block | warn
     statements: dict = field(default_factory=dict)  # {name: params}, excludes reserved keys
 
@@ -85,9 +85,9 @@ def _to_henxel(item: dict) -> Henxel:
 
 def _norm_locations(value) -> list[str]:
     if value is None:
-        return [""]
-    out = [str(v).strip().strip("/") for v in (value if isinstance(value, list) else [value])]
-    return out or [""]
+        return ["./*"]
+    out = [str(v).strip() for v in (value if isinstance(value, list) else [value])]
+    return out or ["./*"]
 
 
 # Drop a file at one of these (relative to the repo root) and henxels auto-loads it —

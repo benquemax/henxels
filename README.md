@@ -38,13 +38,13 @@ settings:                      # behaviours, not tests
 
 henxels:
   - henxel: "Docs are kebab-case markdown, each with a title and summary"
-    in: docs
-    files_are: .md             # a scalar; lists are OR: files_are: [.md, .txt]
-    casing: kebab-case
-    frontmatter_has: [title, summary]   # a list here is AND: both required
+    in: ./docs                 # ./docs = this level; ./docs/* = recursive
+    allowed_filetypes: .md     # a scalar; lists are OR: [.md, .txt]
+    filename_casing: kebab-case
+    required_frontmatter: [title, summary]   # a list here is AND: both required
 
   - henxel: "Project config lives only in pyproject.toml"
-    forbidden_files: [setup.py, setup.cfg]
+    forbidden_files: [setup.py, setup.cfg]   # no `in:` = whole repo
 
   - henxel: "The test suite passes before every commit"
     run_before_commit: "uv run pytest -q"
@@ -104,7 +104,7 @@ def max_lines(param, file, scope):        # asks for `file` → per-file, no loo
 ```
 ```yaml
   - henxel: "No source file exceeds 500 lines"
-    in: src
+    in: ./src/*
     max_lines: 500
 ```
 

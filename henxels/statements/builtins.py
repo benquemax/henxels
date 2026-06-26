@@ -21,8 +21,8 @@ from henxels.util.glob import glob_match
 
 # --- MATCH statements ----------------------------------------------------
 
-@statement("casing", help="file names use this naming convention (snake_case, kebab-case, …)", builtin=True)
-def casing(param, scope):
+@statement("filename_casing", help="file names use this naming convention (snake_case, kebab-case, …)", builtin=True)
+def filename_casing(param, scope):
     conventions = as_list(param)
     unknown = [c for c in conventions if c not in NAMING_CONVENTIONS]
     if unknown:
@@ -34,8 +34,8 @@ def casing(param, scope):
     return violations
 
 
-@statement("files_are", help="every file matches an extension or glob (list = any of)", builtin=True)
-def files_are(param, scope):
+@statement("allowed_filetypes", help="every file is one of these extensions/globs (list = any of)", builtin=True)
+def allowed_filetypes(param, scope):
     patterns = as_list(param)
     violations = []
     for f in scope.files:
@@ -44,8 +44,8 @@ def files_are(param, scope):
     return violations
 
 
-@statement("files_match_regex", help="every file name matches a regex (list = any of)", builtin=True)
-def files_match_regex(param, scope):
+@statement("filename_matches_regex", help="every file name matches a regex (list = any of)", builtin=True)
+def filename_matches_regex(param, scope):
     regexes = [re.compile(p) for p in as_list(param)]
     violations = []
     for f in scope.files:
@@ -57,8 +57,8 @@ def files_match_regex(param, scope):
 
 # --- REQUIRE statements --------------------------------------------------
 
-@statement("frontmatter_has", help="markdown files declare these frontmatter keys (list = all)", builtin=True)
-def frontmatter_has(param, scope):
+@statement("required_frontmatter", help="markdown files declare these frontmatter keys (list = all)", builtin=True)
+def required_frontmatter(param, scope):
     keys = as_list(param)
     violations = []
     for f in scope.files:

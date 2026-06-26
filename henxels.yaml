@@ -12,22 +12,22 @@ settings:
     ignore: ["**/__init__.py", "tests/**"]
 
 henxels:
-  - henxel: "The package code is snake_case"
-    in: henxels
-    casing: snake_case
+  - henxel: "The package code is snake_case (including subpackages)"
+    in: ./henxels/*               # the * makes it recursive
+    filename_casing: snake_case
 
   - henxel: "Tests are snake_case and live in tests/"
-    in: tests
-    casing: snake_case
+    in: ./tests/*
+    filename_casing: snake_case
 
   - henxel: "Docs are kebab-case markdown, each with a title and summary"
-    in: docs
-    files_are: .md
-    casing: kebab-case
-    frontmatter_has: [title, summary]
+    in: ./docs                    # direct files in docs/ (no asterisk)
+    allowed_filetypes: .md
+    filename_casing: kebab-case
+    required_frontmatter: [title, summary]
 
   - henxel: "Project config lives only in pyproject.toml"
-    forbidden_files: [setup.py, setup.cfg]
+    forbidden_files: [setup.py, setup.cfg]   # no `in:` = whole repo
 
   - henxel: "The scratch folder must exist"
     required_files: _temp/.gitkeep

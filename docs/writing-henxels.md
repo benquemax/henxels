@@ -12,19 +12,27 @@ A statement is a named function with parameters.
 ```yaml
 henxels:
   - henxel: "Docs are kebab-case markdown with a title"
-    in: docs
-    files_are: .md
-    casing: kebab-case
-    frontmatter_has: title
+    in: ./docs                 # direct files; use ./docs/* for subfolders too
+    allowed_filetypes: .md
+    filename_casing: kebab-case
+    required_frontmatter: title
 ```
+
+## Scoping with `in:`
+
+Paths are anchored at the repo root, and recursion is explicit via a trailing `*`:
+
+- `./docs` — files **directly in** docs/ (this level only)
+- `./docs/*` — docs/ **and all subfolders**
+- `./` — the repo root; `./*` — the whole repo (the default when `in:` is omitted)
 
 ## Statements
 
 Run `henxels catalogue` to see the built-in standard library. A few:
 
-- **casing** — file names use a convention (`snake_case`, `kebab-case`, …).
-- **files_are** — every file is an extension or glob (a list means *any of*).
-- **frontmatter_has** — markdown declares these keys (a list means *all*).
+- **filename_casing** — file names use a convention (`snake_case`, `kebab-case`, …).
+- **allowed_filetypes** — every file is an extension or glob (a list means *any of*).
+- **required_frontmatter** — markdown declares these keys (a list means *all*).
 - **forbidden_files / forbidden_folders** — none of these may exist.
 - **required_files / required_folders** — these must exist.
 - **run_before_commit / run_before_push** — a command (tests, lints) must pass.

@@ -30,7 +30,7 @@ def render_digest(contract: Contract) -> str:
     ]
     for hx in contract.henxels:
         tag = " _(warn)_" if hx.level == "warn" else ""
-        where = "" if hx.locations == [""] else f" (in {', '.join(loc or '/' for loc in hx.locations)})"
+        where = "" if hx.locations in ([], ["./*"]) else f" (in {', '.join(hx.locations)})"
         lines.append(f"- {hx.text}{where}{tag}")
 
     behaviours = _render_settings(contract)

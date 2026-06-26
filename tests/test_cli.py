@@ -10,10 +10,10 @@ settings:
     above: 0.85
 henxels:
   - henxel: "Docs are kebab-case markdown with a title"
-    in: docs
-    files_are: .md
-    casing: kebab-case
-    frontmatter_has: title
+    in: ./docs
+    allowed_filetypes: .md
+    filename_casing: kebab-case
+    required_frontmatter: title
   - henxel: "No setup.py"
     forbidden_files: setup.py
 """

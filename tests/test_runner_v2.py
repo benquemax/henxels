@@ -21,7 +21,7 @@ def test_builtins_clean(tmp_path):
     files = repo(tmp_path, {"docs/intro.md": "---\ntitle: t\nsummary: s\n---\n# h\n"})
     c = Contract(henxels=[hx(
         "Docs are kebab markdown with title+summary",
-        {"files_are": ".md", "casing": "kebab-case", "frontmatter_has": ["title", "summary"]},
+        {"allowed_filetypes": ".md", "filename_casing": "kebab-case", "required_frontmatter": ["title", "summary"]},
         ["docs"],
     )])
     assert run_contract(c, tmp_path, files) == []
@@ -31,7 +31,7 @@ def test_builtins_collect_instructions(tmp_path):
     files = repo(tmp_path, {"docs/Bad_Name.md": "# no frontmatter\n"})
     c = Contract(henxels=[hx(
         "Docs are kebab markdown with title and summary",
-        {"casing": "kebab-case", "frontmatter_has": ["title", "summary"]},
+        {"filename_casing": "kebab-case", "required_frontmatter": ["title", "summary"]},
         ["docs"],
     )])
     findings = run_contract(c, tmp_path, files)

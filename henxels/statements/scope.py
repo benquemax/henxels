@@ -71,13 +71,9 @@ class Scope:
 
 
 def build_scope(locations, all_files, root, settings) -> Scope:
-    locs = list(locations or [""])
-    files = [f for f in all_files if _under(f, locs)]
-    return Scope(root=Path(root), locations=locs, files=files, all_files=list(all_files), settings=settings or {})
+    from henxels.locations import parse_all
 
-
-def _under(path: str, locations: list[str]) -> bool:
-    for loc in locations:
-        if loc == "" or path == loc or path.startswith(loc + "/"):
-            return True
-    return False
+    locs = parse_all(locations)
+    bases = list(dict.fromkeys(loc.base for loc in locs))  # for existence/folder statements
+    files = [f for f in all_files if any(loc.matches(f) for loc in locs)]
+    return Scope(root=Path(root), locations=bases, files=files, all_files=list(all_files), settings=settings or {})

@@ -6,15 +6,15 @@ from henxels.digest import BEGIN, render_digest, sync_file, update_block
 CONTRACT = Contract(
     settings={"confirm_before_push": True, "ask_me_before_staging": True},
     henxels=[
-        Henxel(text="Docs are kebab-case markdown", locations=["docs"], statements={"casing": "kebab-case"}),
-        Henxel(text="Parking lot exists", locations=[""], level="warn", statements={"required_files": "_todo.md"}),
+        Henxel(text="Docs are kebab-case markdown", locations=["./docs"], statements={"filename_casing": "kebab-case"}),
+        Henxel(text="Parking lot exists", locations=["./*"], level="warn", statements={"required_files": "_todo.md"}),
     ],
 )
 
 
 def test_render_digest():
     d = render_digest(CONTRACT)
-    assert "Docs are kebab-case markdown (in docs)" in d
+    assert "Docs are kebab-case markdown (in ./docs)" in d
     assert "Parking lot exists" in d and "_(warn)_" in d
     assert "bless push" in d
     assert "ask the user before staging" in d

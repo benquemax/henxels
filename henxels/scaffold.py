@@ -34,20 +34,22 @@ settings:
     ignore: ["**/__init__.py"]
 """
 
+# Note the `in:` syntax: ./src = files directly in src/; ./src/* = src/ recursively;
+# ./ = repo root; ./* = whole repo (the default when `in:` is omitted).
 _PYTHON = """
 # Rules. Browse `henxels catalogue` for the statements you can use; write your own
 # with `henxels create-new-statement`.
 henxels:
   - henxel: "Source files live in src/ and are snake_case"
-    in: src
-    casing: snake_case
+    in: ./src/*
+    filename_casing: snake_case
   - henxel: "Tests are snake_case and live in tests/"
-    in: tests
-    casing: snake_case
+    in: ./tests/*
+    filename_casing: snake_case
   - henxel: "Docs are kebab-case markdown"
-    in: docs
-    files_are: .md
-    casing: kebab-case
+    in: ./docs
+    allowed_filetypes: .md
+    filename_casing: kebab-case
   - henxel: "Project config lives only in pyproject.toml"
     forbidden_files: [setup.py, setup.cfg]
   - henxel: "The test suite passes before every commit"
@@ -57,21 +59,21 @@ henxels:
 _NODE = """
 henxels:
   - henxel: "Source files in src/ are kebab-case"
-    in: src
-    casing: kebab-case
+    in: ./src/*
+    filename_casing: kebab-case
   - henxel: "Docs are kebab-case markdown"
-    in: docs
-    files_are: .md
-    casing: kebab-case
+    in: ./docs
+    allowed_filetypes: .md
+    filename_casing: kebab-case
 """
 
 _GENERIC = """
 # Add rules as you go. `henxels explain <path>` shows what applies to a path.
 henxels:
   - henxel: "Docs are kebab-case markdown"
-    in: docs
-    files_are: .md
-    casing: kebab-case
+    in: ./docs
+    allowed_filetypes: .md
+    filename_casing: kebab-case
 """
 
 _CONTRACTS = {"python": _PYTHON, "node": _NODE, "generic": _GENERIC}

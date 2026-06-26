@@ -45,7 +45,7 @@ henxels:
 def test_in_root_default(tmp_path):
     p = _write(tmp_path, "henxels.yaml", 'henxels:\n  - henxel: "x"\n    required_files: _todo.md\n')
     c = load_contract(p)
-    assert c.henxels[0].locations == [""]
+    assert c.henxels[0].locations == ["./*"]  # no `in:` = whole repo
 
 
 def test_explicit_import(tmp_path):
