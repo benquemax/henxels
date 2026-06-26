@@ -9,9 +9,27 @@ description = "External structure that gives shape to your project — keep your
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
+authors = [{ name = "benquemax" }]
+keywords = ["structure", "contract", "agents", "ai", "lint", "guardrails", "pre-commit", "validation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Documentation",
+]
 dependencies = [
     "PyYAML>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/benquemax/henxels"
+Repository = "https://github.com/benquemax/henxels"
+Issues = "https://github.com/benquemax/henxels/issues"
 
 [project.optional-dependencies]
 # Enables the `markdown_lint` statement.
