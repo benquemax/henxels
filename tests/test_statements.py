@@ -130,6 +130,22 @@ def test_markdown_lint_clean(tmp_path):
     assert markdown_lint(s) == []
 
 
+def test_markdown_links_absolute(tmp_path):
+    from henxels.statements.builtins.content import markdown_links_absolute
+
+    s = scope_for(tmp_path, {"README.md": "See [contributing](CONTRIBUTING.md) and [site](https://x.com).\n"})
+    out = markdown_links_absolute(s)
+    assert out and "CONTRIBUTING.md" in out[0]
+    assert not any("x.com" in v for v in out)  # absolute + external links are fine
+
+
+def test_markdown_links_absolute_clean(tmp_path):
+    from henxels.statements.builtins.content import markdown_links_absolute
+
+    s = scope_for(tmp_path, {"README.md": "[a](https://github.com/x) and [b](#anchor).\n"})
+    assert markdown_links_absolute(s) == []
+
+
 def test_command_gates_registered():
     assert get_statement("run_before_commit").stage == "pre_commit"
     assert get_statement("run_before_push").stage == "pre_push"

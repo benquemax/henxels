@@ -86,6 +86,7 @@
         "forbidden_subfolders": { "$ref": "#/$defs/scalarOrList" },
         "must_not_exist": { "type": "boolean" },
         "markdown_lint": { "type": "boolean" },
+        "markdown_links_absolute": { "type": "boolean" },
         "well_formed_statements": { "type": "boolean" },
         "run_before_commit": { "$ref": "#/$defs/scalarOrList" },
         "run_before_push": { "$ref": "#/$defs/scalarOrList" }

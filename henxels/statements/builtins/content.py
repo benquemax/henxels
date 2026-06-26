@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -9,6 +10,9 @@ from pathlib import Path
 
 from henxels.statements.builtins._helpers import parse_frontmatter
 from henxels.statements.registry import as_list, statement
+
+# [text](target) and ![alt](target) — capture the link/image target.
+_MD_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 
 
 @statement("required_frontmatter", help="markdown files declare these frontmatter keys (list = all)", builtin=True)
@@ -51,6 +55,24 @@ def markdown_lint(scope):
             if len(parts) >= 5:
                 issues.append(f"{f} — {parts[3].strip()}: {parts[4].strip()} (line {parts[1]})")
     return issues
+
+
+@statement(
+    "markdown_links_absolute",
+    help="markdown links/images are absolute URLs, not repo-relative (so they survive on PyPI/npm)",
+    builtin=True,
+)
+def markdown_links_absolute(scope):
+    violations = []
+    for f in scope.files:
+        if not f.endswith(".md"):
+            continue
+        for target in _MD_LINK.findall(scope.read_text(f) or ""):
+            t = target.strip()
+            if t.startswith(("http://", "https://", "#", "mailto:")):
+                continue
+            violations.append(f"{f} — make this link absolute: {t}")
+    return violations
 
 
 def _pymarkdown_cmd():

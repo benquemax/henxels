@@ -33,6 +33,10 @@ henxels:
   - henxel: "Statements stay merge-ready (every one has a help= and a test)"
     well_formed_statements: true             # dogfood the contribution quality bar
 
+  - henxel: "README links are absolute (it's the long-description on PyPI and npm)"
+    in: ./README.md
+    markdown_links_absolute: true
+
   - henxel: "The scratch folder must exist"
     required_files: _temp/.gitkeep
 
