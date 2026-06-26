@@ -28,6 +28,11 @@ def test_init_creates_everything(git_repo):
     assert (git_repo / "AGENTS.md").is_file()
     assert report["hooks"]["pre-commit"] == "installed"
     assert "henxels:begin" in (git_repo / "AGENTS.md").read_text()
+    # local schema copy for offline / private-repo editor autocomplete
+    schema = git_repo / ".henxels" / "henxels.schema.json"
+    assert schema.is_file()
+    assert "henxels contract" in schema.read_text()
+    assert "$schema=./.henxels/henxels.schema.json" in (git_repo / "henxels.yaml").read_text()
 
 
 def test_doctor_green_after_init(git_repo):

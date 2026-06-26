@@ -247,6 +247,9 @@ def cmd_init(args) -> int:
             print(f"{mark} git hook {hook}: {outcome}")
     if report.get("digest"):
         print(f"✓ AGENTS.md {report['digest']} — agents now see the contract")
+    if report.get("schema"):
+        print(f"✓ {report['schema']} — editor autocomplete for henxels.yaml")
+        print("    (install a YAML language-server extension, e.g. Red Hat YAML, to see it)")
 
     from henxels.invocation import henxels_cmd
 

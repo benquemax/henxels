@@ -1,6 +1,6 @@
 # henxels.yaml — henxels' own contract. A whiteboard list of rules; we eat our own dog food.
 # Change a rule here to change the rules; that's the only way to disobey responsibly.
-# yaml-language-server: $schema=https://raw.githubusercontent.com/benquemax/henxels/main/henxels/schema/henxels.schema.json
+# yaml-language-server: $schema=./henxels/schema/henxels.schema.json
 
 settings:
   ask_me_before_staging: true     # the maintainer stages and pushes himself

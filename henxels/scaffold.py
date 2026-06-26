@@ -12,15 +12,25 @@ from henxels.contract import load_contract
 from henxels.digest import sync_file
 from henxels.engine.gitinfo import is_git_repo
 from henxels.hooks import install_hooks
+from henxels.schema import schema_text
 
-SCHEMA_URL = (
-    "https://raw.githubusercontent.com/benquemax/henxels/main/henxels/schema/henxels.schema.json"
-)
+# A local schema copy (written by init) gives editors autocomplete offline and in
+# private repos — no fetch from a maybe-private GitHub URL required.
+LOCAL_SCHEMA_PATH = ".henxels/henxels.schema.json"
+LOCAL_SCHEMA_REL = f"./{LOCAL_SCHEMA_PATH}"
 
 _HEADER = f"""# henxels.yaml — a whiteboard list of rules. Each bullet is one henxel.
 # Change a rule here to change the rules; that's the only way to disobey responsibly.
-# yaml-language-server: $schema={SCHEMA_URL}
+# yaml-language-server: $schema={LOCAL_SCHEMA_REL}
 """
+
+
+def write_local_schema(root: Path | str) -> Path:
+    """Write the bundled JSON Schema into the repo so editors can resolve it locally."""
+    path = Path(root) / LOCAL_SCHEMA_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(schema_text(), encoding="utf-8")
+    return path
 
 _SETTINGS = """
 # Behaviours (not tests): protections + tuning knobs.
@@ -104,6 +114,10 @@ def init(root: Path | str, install_git_hooks: bool = True, write_digest: bool = 
         cfg_path.write_text(starter_contract(kind), encoding="utf-8")
         report["contract"] = ("created", kind)
     report["kind"] = kind
+
+    # Local schema copy → editor autocomplete works offline / in private repos.
+    write_local_schema(root)
+    report["schema"] = LOCAL_SCHEMA_PATH
 
     report["hooks"] = install_hooks(root) if (install_git_hooks and is_git_repo(root)) else None
 
