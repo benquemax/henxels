@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "henxels"
 version = "0.2.0"
-description = "External structure that gives shape to your project — keep your ADHD agent in henxels"
+description = "A repo-level harness for coding agents — file-level structure constraints that keep every agent true to your repo"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [{ name = "benquemax" }]
-keywords = ["structure", "contract", "agents", "ai", "lint", "guardrails", "pre-commit", "validation"]
+keywords = ["harness", "agent-harness", "coding-agent", "structure", "contract", "agents", "ai", "lint", "guardrails", "pre-commit", "validation"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

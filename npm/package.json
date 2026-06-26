@@ -1,8 +1,11 @@
 {
   "name": "henxels",
   "version": "0.2.0",
-  "description": "Suspenders for your repo — file-level constraints that keep your ADHD agent in henxels. Node-friendly launcher for the Python engine.",
+  "description": "A repo-level harness for coding agents — file-level constraints that keep every agent true to your repo's structure. Node-friendly launcher for the Python engine.",
   "keywords": [
+    "harness",
+    "agent-harness",
+    "coding-agent",
     "structure",
     "contract",
     "agents",

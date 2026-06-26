@@ -10,8 +10,13 @@
 
 # henxels
 
-**File-level rules that steer agents and humans to keep a repository true to a
-contract.** Each rule is a *henxel* (from Finnish _henkselit_, "suspenders").
+**A repo-level harness for coding agents** — file-level rules that steer agents (and
+humans) to keep a repository true to a contract. Each rule is a *henxel* (from Finnish
+_henkselit_, "suspenders").
+
+Most agent harnesses wrap the *agent*. henxels is a harness that lives in the *repo*: a
+structural contract that holds **every** agent — Claude Code, OpenCode, Aider, Hermes,
+Pi, or a human — to the same shape, no matter which one made the change.
 
 henxels is for repos where small, eager, easily-distracted coding agents keep writing
 the right thing in the wrong place. It puts the expected structure **in front of the
