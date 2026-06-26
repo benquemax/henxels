@@ -16,13 +16,19 @@ HOOKS = {"pre-commit": "_precommit", "pre-push": "_prepush"}
 
 
 def _script(subcommand: str) -> str:
+    # Resolve henxels robustly: a global install first, then the project's uv env
+    # (so it works without activating the venv), then a plain python module.
     return (
         "#!/bin/sh\n"
         f"{HENXELS_MARKER}\n"
         "# Runs the henxels contract before this git action. Override consciously\n"
         "# with `henxels bless <action>` or by editing henxels.yaml.\n"
-        'if command -v henxels >/dev/null 2>&1; then\n'
+        "if command -v henxels >/dev/null 2>&1; then\n"
         f'  exec henxels {subcommand} "$@"\n'
+        "elif command -v uv >/dev/null 2>&1 && [ -f pyproject.toml ]; then\n"
+        f'  exec uv run henxels {subcommand} "$@"\n'
+        "elif command -v python3 >/dev/null 2>&1; then\n"
+        f'  exec python3 -m henxels {subcommand} "$@"\n'
         "else\n"
         f'  exec python -m henxels {subcommand} "$@"\n'
         "fi\n"
