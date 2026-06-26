@@ -35,3 +35,7 @@ _todo.md
 .pytest_cache/
 .ruff_cache/
 .coverage
+
+# npm: README is copied from the root by the prepack script at publish time
+npm/README.md
+npm/*.tgz
