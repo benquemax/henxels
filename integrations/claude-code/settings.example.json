@@ -1,0 +1,21 @@
+{
+  "//": "Copy these hooks into .claude/settings.json (or settings.local.json). They make Claude Code steer on the way in and enforce on the way out. The git hooks still enforce at commit regardless.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/integrations/claude-code/henxels-hook.sh\" explain" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/integrations/claude-code/henxels-hook.sh\" check" }
+        ]
+      }
+    ]
+  }
+}

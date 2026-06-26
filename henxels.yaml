@@ -9,7 +9,7 @@ settings:
     over_lines: 5
   warn_about_similar_files:
     above: 0.85
-    ignore: ["**/__init__.py", "tests/**"]
+    ignore: ["**/__init__.py", "tests/**", "integrations/**"]
 
 henxels:
   - henxel: "The package code is snake_case (including subpackages)"

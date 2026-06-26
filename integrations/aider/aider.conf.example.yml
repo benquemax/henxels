@@ -1,0 +1,18 @@
+# henxels with Aider.
+# Aider runs a lint command AFTER each edit (its native extension point), so point it
+# at `henxels check`. Aider shows the output and offers to fix. The git hooks still
+# enforce at commit. Merge this into your .aider.conf.yml.
+#
+# If `henxels` isn't on PATH, use `uv run henxels check` instead (or `uv tool install
+# henxels` to put it on PATH).
+
+# Run henxels on every file Aider edits.
+lint-cmd:
+  - "henxels check"
+
+# Lint automatically after changes (this is Aider's default; shown for clarity).
+auto-lint: true
+
+# Optional: also run your test suite after edits.
+# test-cmd: "uv run pytest -q"
+# auto-test: false
