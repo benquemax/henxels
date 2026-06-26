@@ -71,6 +71,13 @@ def test_create_new_statement(project, capsys):
     assert "contribute" in text
 
 
+def test_hook_commands_swallow_git_args(tmp_path, monkeypatch):
+    # git passes "<remote> <url>" to pre-push; the hidden hook commands must accept them.
+    monkeypatch.chdir(tmp_path)
+    assert main(["_prepush", "origin", "git@github.com:me/repo.git"]) == 0
+    assert main(["_precommit", "anything"]) == 0
+
+
 def test_check_no_contract(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     assert main(["check", "--all"]) == 2

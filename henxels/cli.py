@@ -85,9 +85,12 @@ def main(argv: list[str] | None = None) -> int:
     pd = sub.add_parser("doctor", help="check that henxels is correctly set up")
     pd.set_defaults(func=cmd_doctor)
 
+    # Git passes arguments to its hooks (pre-push gets "<remote> <url>"); swallow them.
     p_pc = sub.add_parser("_precommit")
+    p_pc.add_argument("hook_args", nargs="*")
     p_pc.set_defaults(func=cmd_precommit)
     p_pp = sub.add_parser("_prepush")
+    p_pp.add_argument("hook_args", nargs="*")
     p_pp.set_defaults(func=cmd_prepush)
 
     args = parser.parse_args(argv)
