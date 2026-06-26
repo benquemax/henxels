@@ -1,0 +1,115 @@
+"""Duplication awareness — warn before a copy diverges.
+
+Per the contract's intent: compare a file against the **committed** corpus only,
+skip files that are similar *by purpose* (name-glob excludes), and surface matches
+as **warnings**, never blocks. Awareness is the point — the agent reuses the
+original instead of spawning a second, soon-to-diverge copy.
+"""
+
+from __future__ import annotations
+
+import difflib
+from pathlib import Path
+
+from henxels.config.load import Config
+from henxels.engine import gitinfo
+from henxels.findings import WARN, Finding
+from henxels.util.glob import glob_match
+
+MAX_BYTES = 200_000  # skip very large files; pairwise diffing them isn't worth it
+
+
+def find_duplicates(
+    root: Path | str,
+    candidates: list[str],
+    threshold: float = 0.85,
+    excludes: tuple[str, ...] | list[str] = (),
+    corpus: list[str] | None = None,
+) -> list[tuple[str, str, float]]:
+    """Return (candidate, most_similar_committed_file, ratio) above ``threshold``."""
+    root = Path(root)
+    if corpus is None:
+        corpus = gitinfo.tracked_files(root)
+
+    corpus_texts: dict[str, str] = {}
+    for path in corpus:
+        if _excluded(path, excludes):
+            continue
+        text = _read(root, path)
+        if text is None:
+            continue
+        norm = _normalize(text)
+        if norm:
+            corpus_texts[path] = norm
+
+    results: list[tuple[str, str, float]] = []
+    for cand in candidates:
+        if _excluded(cand, excludes):
+            continue
+        text = _read(root, cand)
+        if text is None:
+            continue
+        cnorm = _normalize(text)
+        if not cnorm:
+            continue
+        best, best_ratio = None, 0.0
+        matcher = difflib.SequenceMatcher()
+        matcher.set_seq2(cnorm)
+        for other_path, otext in corpus_texts.items():
+            if other_path == cand:
+                continue
+            matcher.set_seq1(otext)
+            if matcher.quick_ratio() < threshold:
+                continue
+            ratio = matcher.ratio()
+            if ratio > best_ratio:
+                best, best_ratio = other_path, ratio
+        if best is not None and best_ratio >= threshold:
+            results.append((cand, best, best_ratio))
+    return results
+
+
+def similarity_findings(config: Config, root: Path | str, candidates: list[str]) -> list[Finding]:
+    """Warn about candidates that look like duplicates of committed files."""
+    sim = config.similarity
+    if not sim:
+        return []
+    threshold = float(sim.get("warn_above", 0.85))
+    excludes = sim.get("exclude", []) or []
+    findings: list[Finding] = []
+    for cand, other, ratio in find_duplicates(root, candidates, threshold, excludes):
+        findings.append(
+            Finding(
+                level=WARN,
+                henxel="similarity",
+                path=cand,
+                message=f"~{round(ratio * 100)}% similar to {other}",
+                reason="possible duplicate — divergence usually starts with a second copy",
+                steer=f"reuse {other} instead of a parallel copy, or confirm it's intentional",
+            )
+        )
+    return findings
+
+
+def _normalize(text: str) -> str:
+    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
+
+
+def _excluded(path: str, excludes) -> bool:
+    return any(glob_match(pattern, path) for pattern in excludes)
+
+
+def _read(root: Path, rel: str) -> str | None:
+    p = root / rel
+    try:
+        if not p.is_file() or p.stat().st_size > MAX_BYTES:
+            return None
+        data = p.read_bytes()
+    except OSError:
+        return None
+    if b"\x00" in data:  # binary
+        return None
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None

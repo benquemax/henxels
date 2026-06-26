@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/benquemax/henxels/main/henxels/schema/henxels.schema.json",
+  "title": "henxels contract",
+  "description": "The contract that gives your repo its shape. Read me like a document.",
+  "type": "object",
+  "required": ["henxels"],
+  "additionalProperties": false,
+  "properties": {
+    "henxels": {
+      "description": "Contract schema version.",
+      "type": "integer",
+      "enum": [1]
+    },
+    "guards": {
+      "description": "Make destructive reflexes a conscious act.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "push": { "$ref": "#/$defs/guard" },
+        "commit": { "$ref": "#/$defs/guard" },
+        "stage": { "$ref": "#/$defs/guard" },
+        "delete": { "$ref": "#/$defs/deleteGuard" }
+      }
+    },
+    "similarity": {
+      "description": "Duplication awareness over committed files.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "warn_above": {
+          "description": "Similarity ratio (0..1) above which a duplicate is flagged.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "exclude": {
+          "description": "Globs whose files are skipped (similar by purpose, e.g. __init__.py).",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "canonical": {
+      "description": "The one true home of a thing; forbid look-alikes that duplicate it.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/canonicalEntry" }
+    },
+    "require": {
+      "description": "Repo-root files/folders that must exist (e.g. gitignored scaffolding).",
+      "type": "array",
+      "items": { "$ref": "#/$defs/requireEntry" }
+    },
+    "checks": {
+      "description": "Commands the git hooks run. A non-zero exit blocks the action.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pre_commit": { "$ref": "#/$defs/commandList" },
+        "pre_push": { "$ref": "#/$defs/commandList" }
+      }
+    },
+    "tree": {
+      "description": "Folder structure. Closest rule wins; rules cascade into subfolders.",
+      "$ref": "#/$defs/node"
+    },
+    "plugins": {
+      "description": "Opt-in extras (markdown, frontmatter).",
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "guard": {
+      "description": "off = allowed; bless = blocked until `henxels bless`; ask = remind the agent.",
+      "type": "string",
+      "enum": ["off", "bless", "ask"]
+    },
+    "deleteGuard": {
+      "oneOf": [
+        { "$ref": "#/$defs/guard" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "$ref": "#/$defs/guard" },
+            "line_threshold": {
+              "description": "Net removed lines that trigger the guard.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "naming": {
+      "description": "Naming convention for files in this folder.",
+      "type": "string",
+      "enum": [
+        "snake_case",
+        "kebab-case",
+        "camelCase",
+        "PascalCase",
+        "SCREAMING_SNAKE_CASE",
+        "any"
+      ]
+    },
+    "forbidEntry": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["glob"],
+          "additionalProperties": false,
+          "properties": {
+            "glob": { "type": "string" },
+            "reason": { "type": "string" },
+            "steer": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "commandList": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    },
+    "requireEntry": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["file"],
+          "additionalProperties": true,
+          "properties": {
+            "file": { "type": "string" },
+            "reason": { "type": "string" },
+            "severity": {
+              "description": "block (default) stops the action; warn only reminds.",
+              "type": "string",
+              "enum": ["block", "warn"]
+            }
+          }
+        }
+      ]
+    },
+    "canonicalEntry": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": false,
+      "properties": {
+        "role": { "type": "string" },
+        "file": { "type": "string" },
+        "forbid_lookalikes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "naming": { "$ref": "#/$defs/naming" },
+        "purpose": { "type": "string" },
+        "mirror": { "type": "string" },
+        "forbid": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/forbidEntry" }
+        },
+        "require": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/requireEntry" }
+        }
+      },
+      "additionalProperties": { "$ref": "#/$defs/node" }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "henxels"
+version = "0.2.0"
+description = "External structure that gives shape to your project — keep your ADHD agent in henxels"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+# Opt-in markdown/frontmatter plugins (demoted from core).
+markdown = ["pymarkdownlnt>=0.0", "python-frontmatter>=1.1.0"]
+dev = [
+    "pytest>=7.0",
+    "pymarkdownlnt>=0.0",
+    "python-frontmatter>=1.1.0",
+]
+
+[project.scripts]
+henxels = "henxels.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["henxels*"]
+
+[tool.setuptools.package-data]
+henxels = ["schema/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

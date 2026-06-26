@@ -1,0 +1,75 @@
+# =============================================================================
+# henxels.yaml — annotated example contract
+# =============================================================================
+# Copy to your repo root as `henxels.yaml` and trim to taste. Read it top to
+# bottom like a document. The closest rule in the tree wins. To disobey a rule,
+# change this file — that's the only sanctioned escape.
+#
+# Editors with the YAML language server autocomplete keys and enum values from
+# the schema referenced below.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/benquemax/henxels/main/henxels/schema/henxels.schema.json
+
+henxels: 1                      # contract schema version
+
+# -----------------------------------------------------------------------------
+# GUARDS — turn destructive reflexes into a conscious act
+# -----------------------------------------------------------------------------
+# off   = allowed
+# bless = blocked until `henxels bless <action>` (a one-time, fingerprinted token)
+# ask   = not blocked; reminds the agent (used for `stage`)
+guards:
+  push: bless                   # `git push` waits for `henxels bless push`
+  delete:                       # losing information should be deliberate
+    mode: bless
+    line_threshold: 5           # net removed lines that trip the guard
+  stage: ask                    # remind agents to let YOU stage and push
+  # commit: off                 # commit guard is off by default
+
+# -----------------------------------------------------------------------------
+# SIMILARITY — duplication awareness over committed files (warnings only)
+# -----------------------------------------------------------------------------
+similarity:
+  warn_above: 0.85              # 0..1; higher = stricter about near-copies
+  exclude:                      # files that are similar *by purpose* — skip them
+    - "**/__init__.py"
+    - "**/index.ts"
+    - "**/*.test.*"
+
+# -----------------------------------------------------------------------------
+# CANONICAL — the one true home of a thing; forbid look-alikes
+# -----------------------------------------------------------------------------
+canonical:
+  - role: "project config"
+    file: pyproject.toml
+    forbid_lookalikes: ["setup.py", "setup.cfg"]   # bare names match anywhere
+
+# -----------------------------------------------------------------------------
+# TREE — folders mirror your repo; rules cascade into subfolders
+# -----------------------------------------------------------------------------
+tree:
+  src:
+    naming: snake_case          # snake_case | kebab-case | camelCase | PascalCase
+    purpose: "application code"  #            | SCREAMING_SNAKE_CASE | any
+    forbid:
+      - glob: "**/*_test.py"
+        reason: "tests live in tests/, not beside the source"
+        steer: "create the test under tests/ mirroring this path"
+    api:
+      require:
+        - file: handlers.py
+          reason: "every api module exposes handlers"
+    ui:
+      naming: kebab-case        # closest rule wins: ui overrides src's snake_case
+  tests:
+    naming: snake_case
+    mirror: src/**              # tests should mirror the src tree
+  docs:
+    naming: kebab-case
+
+# -----------------------------------------------------------------------------
+# PLUGINS — opt-in extras (off unless listed here)
+# -----------------------------------------------------------------------------
+# plugins:
+#   markdown: true              # lint .md files via pymarkdownlnt (warnings)
+#   frontmatter:
+#     docs: [title, date]       # .md files under docs/ must declare these keys

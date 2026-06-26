@@ -1,0 +1,30 @@
+{
+  "name": "henxels",
+  "version": "0.2.0",
+  "description": "Suspenders for your repo — file-level constraints that keep your ADHD agent in henxels. Node-friendly launcher for the Python engine.",
+  "keywords": [
+    "structure",
+    "contract",
+    "agents",
+    "ai",
+    "lint",
+    "guardrails",
+    "pre-commit"
+  ],
+  "license": "MIT",
+  "bin": {
+    "henxels": "bin/henxels.js"
+  },
+  "files": [
+    "bin/henxels.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "preferGlobal": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benquemax/henxels.git"
+  }
+}

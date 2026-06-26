@@ -1,0 +1,67 @@
+# henxels.yaml — henxels' own contract. We eat our own dog food.
+# Change a rule here to change the rules; that's the only way to disobey responsibly.
+# yaml-language-server: $schema=https://raw.githubusercontent.com/benquemax/henxels/main/henxels/schema/henxels.schema.json
+henxels: 1
+
+# Guards turn destructive reflexes into a conscious act.
+guards:
+  push: bless            # `git push` waits until you run `henxels bless push`
+  delete:                # deleting files / removing many lines waits for a bless
+    mode: bless
+    line_threshold: 5
+  stage: ask             # the maintainer stages and pushes himself
+
+# Commands the hooks run. The test gate lives in the contract, not a hand-edited hook.
+checks:
+  pre_commit:
+    - "uv run pytest -q"            # full suite must pass before every commit
+  pre_push:
+    - "uv run henxels check --all"  # contract must hold before every push
+
+# Duplication awareness over committed files. Warnings only — never blocks.
+similarity:
+  warn_above: 0.85
+  exclude:
+    - "**/__init__.py"
+    - "tests/**"          # test modules are similar by purpose
+
+# The one true home of a thing.
+canonical:
+  - role: "project config"
+    file: pyproject.toml
+    forbid_lookalikes: ["setup.py", "setup.cfg"]
+
+# Repo-root scaffolding that must exist (even when gitignored).
+require:
+  - file: _temp/.gitkeep
+    reason: "the scratch folder must exist (committed via .gitkeep)"
+  - file: _todo.md
+    reason: "the parking lot should exist locally"
+    severity: warn        # gitignored, so a fresh CI checkout won't have it — remind, don't block
+
+# Opt-in plugins.
+plugins:
+  frontmatter:
+    docs: [title, summary]   # docs/*.md must declare these frontmatter keys
+
+# The tree mirrors our folders. Closest rule wins; rules cascade into subfolders.
+tree:
+  henxels:
+    naming: snake_case
+    purpose: "the package — one module per concern"
+    rules:
+      naming: snake_case
+    config:
+      naming: snake_case
+    engine:
+      naming: snake_case
+    util:
+      naming: snake_case
+    plugins:
+      naming: snake_case
+  tests:
+    naming: snake_case
+    purpose: "TDD suite — mirrors the package; runs in pre-commit"
+  docs:
+    naming: kebab-case
+    purpose: "user documentation — doubles as live test data"

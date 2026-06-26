@@ -1,0 +1,37 @@
+# .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scratch (folder committed, contents ignored)
+_temp/*
+!_temp/.gitkeep
+
+# Personal parking lot — gitignored, but henxels requires it to exist locally
+_todo.md
+
+# Test / tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
