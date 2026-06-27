@@ -46,6 +46,12 @@ def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list
 
         findings.extend(warn_similar(sim, root, gitinfo.staged_files(root)))
 
+    large = settings.large_files(contract)
+    if large:
+        from henxels.filesize import warn_large_files
+
+        findings.extend(warn_large_files(large, root, gitinfo.staged_files(root)))
+
     deletions = None
     dp = settings.delete_protection(contract)
     if dp:

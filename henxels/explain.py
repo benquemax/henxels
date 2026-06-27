@@ -14,7 +14,7 @@ def explain_path(contract: Contract, rel_path: str) -> str:
     path = str(rel_path).replace("\\", "/").strip("/")
     lines = [f"henxels for {path or '<repo root>'}"]
 
-    matched = [hx for hx in contract.henxels if _path_in(path, hx.locations)]
+    matched = [hx for hx in contract.henxels if _governs(path, hx)]
     if not matched:
         lines.append("  (no henxels apply here — the contract is silent)")
         return "\n".join(lines)
@@ -35,13 +35,16 @@ def explain_data(contract: Contract, rel_path: str) -> dict:
         "henxels": [
             {"henxel": hx.text, "in": hx.locations, "level": hx.level, "statements": hx.statements}
             for hx in contract.henxels
-            if _path_in(path, hx.locations)
+            if _governs(path, hx)
         ],
     }
 
 
-def _path_in(path: str, locations: list[str]) -> bool:
-    return any(loc.governs(path) for loc in parse_all(locations))
+def _governs(path: str, hx) -> bool:
+    if not any(loc.governs(path) for loc in parse_all(hx.locations)):
+        return False
+    exc = parse_all(hx.excludes) if hx.excludes else []
+    return not any(e.matches(path) for e in exc)
 
 
 def _fmt(param) -> str:

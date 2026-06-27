@@ -5,7 +5,10 @@ Importing this package registers every built-in (each category module runs its
 
     naming      file names                 (filename_casing, filename_matches_regex)
     structure   where files/folders live   (allowed_filetypes, required_*, forbidden_*, …)
-    content     what's inside files        (required_frontmatter, markdown_lint)
+    content     what's inside files        (required_frontmatter, frontmatter_*, markdown_lint)
+    links       cross-page navigation      (links_resolve, links_are_relative, min_outbound_links, referenced_in)
+    size        per-file line budgets      (max_lines)
+    security    things that must not ship  (no_secrets)
     meta        the statement library      (well_formed_statements)
     commands    git-stage command gates    (run_before_commit, run_before_push)
 """
@@ -13,8 +16,11 @@ Importing this package registers every built-in (each category module runs its
 from henxels.statements.builtins import (  # noqa: F401  (imported for registration)
     commands,
     content,
+    links,
     meta,
     naming,
+    security,
+    size,
     structure,
 )
 

@@ -23,7 +23,7 @@ def run_contract(contract: Contract, root: Path | str, files: list[str] | None =
 
     findings: list[Finding] = []
     for hx in contract.henxels:
-        scope = build_scope(hx.locations, all_files, root, contract.settings)
+        scope = build_scope(hx.locations, all_files, root, contract.settings, hx.excludes)
         instructions: list[str] = []
         for name, param in hx.statements.items():
             sdef = get_statement(name)

@@ -11,6 +11,7 @@ from henxels.contract import Contract
 
 DEFAULT_DELETE_LINES = 5
 DEFAULT_SIMILARITY = 0.85
+DEFAULT_LARGE_FILE = "8000 tokens"
 
 
 def ask_me_before_staging(contract: Contract) -> bool:
@@ -45,4 +46,16 @@ def similarity(contract: Contract) -> dict | None:
             "above": float(raw.get("above", DEFAULT_SIMILARITY)),
             "ignore": raw.get("ignore", []) or [],
         }
+    return None
+
+
+def large_files(contract: Contract) -> dict | None:
+    """Return {'over': '<n> <unit>', 'ignore': [...]} when large-file warnings are on."""
+    raw = contract.settings.get("warn_about_large_files")
+    if not raw:
+        return None
+    if raw is True:
+        return {"over": DEFAULT_LARGE_FILE, "ignore": []}
+    if isinstance(raw, dict):
+        return {"over": str(raw.get("over", DEFAULT_LARGE_FILE)), "ignore": raw.get("ignore", []) or []}
     return None

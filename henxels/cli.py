@@ -156,6 +156,12 @@ def cmd_check(args) -> int:
         from henxels.similarity import warn_similar
 
         findings.extend(warn_similar(sim, root, files))
+
+    large = settings.large_files(contract)
+    if large:
+        from henxels.filesize import warn_large_files
+
+        findings.extend(warn_large_files(large, root, files))
     return _emit(findings, plain=args.plain)
 
 

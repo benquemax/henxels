@@ -30,3 +30,12 @@ def test_explain_data_json_shape():
 def test_explain_silent_location():
     out = explain_path(Contract(henxels=[Henxel(text="x", locations=["./src"], statements={})]), "docs/x.md")
     assert "no henxels apply" in out
+
+
+def test_explain_respects_except():
+    contract = Contract(henxels=[
+        Henxel(text="Pages are kebab-case", locations=["./*"], excludes=["./raw/*"],
+               statements={"filename_casing": "kebab-case"}),
+    ])
+    assert "Pages are kebab-case" in explain_path(contract, "entities/tom.md")
+    assert "no henxels apply" in explain_path(contract, "raw/articles/x.md")  # carved out

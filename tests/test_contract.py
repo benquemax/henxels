@@ -48,6 +48,30 @@ def test_in_root_default(tmp_path):
     assert c.henxels[0].locations == ["./*"]  # no `in:` = whole repo
 
 
+def test_except_excludes_parsed(tmp_path):
+    p = _write(
+        tmp_path,
+        "henxels.yaml",
+        """
+henxels:
+  - henxel: "Pages only"
+    in: ./*
+    except: [./raw/*, index.md]
+    filename_casing: kebab-case
+""",
+    )
+    c = load_contract(p)
+    h = c.henxels[0]
+    assert h.excludes == ["./raw/*", "index.md"]
+    assert "except" not in h.statements  # reserved, not a statement
+
+
+def test_except_absent_is_empty(tmp_path):
+    p = _write(tmp_path, "henxels.yaml", 'henxels:\n  - henxel: "x"\n    required_files: a.md\n')
+    c = load_contract(p)
+    assert c.henxels[0].excludes == []
+
+
 def test_explicit_import(tmp_path):
     _write(
         tmp_path,

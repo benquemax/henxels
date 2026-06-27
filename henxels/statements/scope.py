@@ -70,10 +70,16 @@ class Scope:
         return self.matches_casing(rel, "kebab-case")
 
 
-def build_scope(locations, all_files, root, settings) -> Scope:
+def build_scope(locations, all_files, root, settings, excludes=None) -> Scope:
     from henxels.locations import parse_all
 
     locs = parse_all(locations)
+    # parse_all([]) would fall back to the whole repo, so only parse when there's something.
+    exc = parse_all(excludes) if excludes else []
     bases = list(dict.fromkeys(loc.base for loc in locs))  # for existence/folder statements
-    files = [f for f in all_files if any(loc.matches(f) for loc in locs)]
+    files = [
+        f
+        for f in all_files
+        if any(loc.matches(f) for loc in locs) and not any(e.matches(f) for e in exc)
+    ]
     return Scope(root=Path(root), locations=bases, files=files, all_files=list(all_files), settings=settings or {})

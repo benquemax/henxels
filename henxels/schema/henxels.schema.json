@@ -48,6 +48,20 @@
               }
             }
           ]
+        },
+        "warn_about_large_files": {
+          "description": "Warn (never block) when a file exceeds a size threshold. over: <number> <unit> where unit is b/kb/mb/gb/tokens/lines (optional space; tokens are an estimate).",
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "over": { "type": "string", "pattern": "^\\s*\\d+(\\.\\d+)?\\s*([bB]|[kKmMgG][bB]|[tT][oO][kK][eE][nN][sS]|[lL][iI][nN][eE][sS])\\s*$" },
+                "ignore": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          ]
         }
       }
     },
@@ -70,6 +84,7 @@
         "must": { "type": "string" },
         "description": { "type": "string" },
         "in": { "$ref": "#/$defs/scalarOrList", "description": "where this henxel applies: ./docs = that folder, ./docs/* = recursively, ./ = repo root, ./* = whole repo (default)" },
+        "except": { "$ref": "#/$defs/scalarOrList", "description": "paths/globs carved out of in: (e.g. exclude ./raw/* and index.md from a ./* page rule)" },
         "level": { "type": "string", "enum": ["block", "warn"] },
 
         "filename_casing": {
@@ -79,14 +94,27 @@
         "allowed_filetypes": { "$ref": "#/$defs/scalarOrList", "description": "every file is one of these extensions/globs (list = OR)" },
         "filename_matches_regex": { "$ref": "#/$defs/scalarOrList" },
         "required_frontmatter": { "$ref": "#/$defs/scalarOrList", "description": "markdown declares these keys (list = all)" },
+        "frontmatter_dates": { "$ref": "#/$defs/scalarOrList", "description": "these frontmatter fields are valid ISO dates (YYYY-MM-DD)" },
+        "frontmatter_values": {
+          "type": "object",
+          "description": "frontmatter fields hold values from an allowed set (scalar ∈ set; list ⊆ set)",
+          "additionalProperties": { "$ref": "#/$defs/scalarOrList" }
+        },
+        "frontmatter_sha256_matches": { "type": "string", "description": "this frontmatter field equals the SHA-256 of the body below the frontmatter" },
         "required_files": { "$ref": "#/$defs/scalarOrList" },
         "required_subfolders": { "$ref": "#/$defs/scalarOrList" },
         "only_these_subfolders": { "$ref": "#/$defs/scalarOrList" },
         "forbidden_files": { "$ref": "#/$defs/scalarOrList" },
         "forbidden_subfolders": { "$ref": "#/$defs/scalarOrList" },
         "must_not_exist": { "type": "boolean" },
+        "max_lines": { "type": "integer", "minimum": 1, "description": "each file in scope stays under this many lines" },
+        "no_secrets": { "type": "boolean", "description": "files contain no credentials (private keys, API tokens, passwords)" },
         "markdown_lint": { "type": "boolean" },
         "markdown_links_absolute": { "type": "boolean" },
+        "links_are_relative": { "type": "boolean", "description": "internal markdown links are relative, not absolute paths" },
+        "links_resolve": { "type": "boolean", "description": "every relative internal markdown link points at a real file" },
+        "min_outbound_links": { "type": "integer", "minimum": 0, "description": "each page links out to at least N other pages" },
+        "referenced_in": { "type": "string", "description": "every page in scope is linked from this index file (e.g. index.md)" },
         "well_formed_statements": { "type": "boolean" },
         "run_before_commit": { "$ref": "#/$defs/scalarOrList" },
         "run_before_push": { "$ref": "#/$defs/scalarOrList" }

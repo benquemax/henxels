@@ -24,14 +24,21 @@ def bare_name(pattern: str, name: str) -> bool:
 
 def parse_frontmatter(text: str | None) -> dict:
     """Parse a leading ``---`` YAML frontmatter block into a dict (empty if none)."""
+    return split_frontmatter(text)[0]
+
+
+def split_frontmatter(text: str | None) -> tuple[dict, str]:
+    """Split text into (frontmatter dict, body). ``body`` is everything after the
+    closing ``---`` line, with exact bytes preserved (so it can be hashed)."""
     if not text or not text.startswith("---"):
-        return {}
-    lines = text.splitlines()
-    end = next((i for i, line in enumerate(lines[1:], start=1) if line.strip() == "---"), None)
+        return {}, text or ""
+    lines = text.splitlines(keepends=True)
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
     if end is None:
-        return {}
+        return {}, text
     try:
-        data = yaml.safe_load("\n".join(lines[1:end]))
+        data = yaml.safe_load("".join(lines[1:end]))
     except yaml.YAMLError:
-        return {}
-    return data if isinstance(data, dict) else {}
+        data = None
+    meta = data if isinstance(data, dict) else {}
+    return meta, "".join(lines[end + 1 :])

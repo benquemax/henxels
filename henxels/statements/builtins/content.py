@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import datetime
+import hashlib
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-from henxels.statements.builtins._helpers import parse_frontmatter
+from henxels.statements.builtins._helpers import parse_frontmatter, split_frontmatter
 from henxels.statements.registry import as_list, statement
 
 # [text](target) and ![alt](target) — capture the link/image target.
 _MD_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 @statement("required_frontmatter", help="markdown files declare these frontmatter keys (list = all)", builtin=True)
@@ -27,6 +30,87 @@ def required_frontmatter(param, scope):
             if key not in meta:
                 violations.append(f"{f} — add frontmatter key '{key}'")
     return violations
+
+
+@statement(
+    "frontmatter_dates",
+    help="named frontmatter fields are valid ISO dates (YYYY-MM-DD)",
+    builtin=True,
+)
+def frontmatter_dates(param, scope):
+    fields = as_list(param)
+    violations = []
+    for f in scope.files:
+        if not f.endswith(".md"):
+            continue
+        meta = parse_frontmatter(scope.read_text(f))
+        for name in fields:
+            if name not in meta:
+                continue  # presence is required_frontmatter's job
+            if not _is_iso_date(meta[name]):
+                violations.append(f"{f} — frontmatter '{name}' must be an ISO date (YYYY-MM-DD): {meta[name]!r}")
+    return violations
+
+
+@statement(
+    "frontmatter_values",
+    help="frontmatter fields hold values from an allowed set (scalar ∈ set; list ⊆ set)",
+    builtin=True,
+)
+def frontmatter_values(param, scope):
+    spec = param if isinstance(param, dict) else {}
+    violations = []
+    for f in scope.files:
+        if not f.endswith(".md"):
+            continue
+        meta = parse_frontmatter(scope.read_text(f))
+        for name, allowed in spec.items():
+            if name not in meta:
+                continue  # presence is required_frontmatter's job
+            allowed_set = set(as_list(allowed))
+            value = meta[name]
+            for v in (value if isinstance(value, list) else [value]):
+                if v not in allowed_set:
+                    violations.append(
+                        f"{f} — frontmatter '{name}': {v!r} not allowed (use: {', '.join(map(str, sorted(allowed_set)))})"
+                    )
+    return violations
+
+
+@statement(
+    "frontmatter_sha256_matches",
+    help="frontmatter sha256 field equals the SHA-256 of the body below the frontmatter",
+    builtin=True,
+)
+def frontmatter_sha256_matches(param, scope):
+    field = param if isinstance(param, str) else "sha256"
+    violations = []
+    for f in scope.files:
+        if not f.endswith(".md"):
+            continue
+        meta, body = split_frontmatter(scope.read_text(f))
+        if field not in meta:
+            continue  # presence is required_frontmatter's job
+        declared = str(meta[field]).strip().lower()
+        actual = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        if declared != actual:
+            violations.append(f"{f} — frontmatter '{field}' {declared[:12]}… ≠ body hash {actual[:12]}…; re-hash the body")
+    return violations
+
+
+def _is_iso_date(value) -> bool:
+    # An unquoted YAML date becomes a date object (valid by construction); reject datetimes.
+    if isinstance(value, datetime.datetime):
+        return False
+    if isinstance(value, datetime.date):
+        return True
+    if not isinstance(value, str) or not _ISO_DATE.match(value):
+        return False
+    try:
+        datetime.date.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
 
 
 @statement("markdown_lint", help="markdown files pass pymarkdownlnt (pip install pymarkdownlnt)", builtin=True)

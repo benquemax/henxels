@@ -18,7 +18,7 @@ import yaml
 
 # Keys on a henxel item that are NOT statements.
 HEADLINE_KEYS = ("henxel", "rule", "must", "description")
-RESERVED = set(HEADLINE_KEYS) | {"in", "level"}
+RESERVED = set(HEADLINE_KEYS) | {"in", "level", "except"}
 
 
 DEFAULT_FILENAMES = ("henxels.yaml", ".henxels.yaml", "henxels.yml", ".henxels.yml")
@@ -41,6 +41,7 @@ def find_contract(start: Path | str = ".") -> Path | None:
 class Henxel:
     text: str  # the sentence (and the failure message)
     locations: list[str] = field(default_factory=lambda: ["./*"])  # raw `in:` specs
+    excludes: list[str] = field(default_factory=list)  # raw `except:` specs carved out of scope
     level: str = "block"  # block | warn
     statements: dict = field(default_factory=dict)  # {name: params}, excludes reserved keys
 
@@ -78,9 +79,10 @@ def load_contract(path: Path | str) -> Contract:
 def _to_henxel(item: dict) -> Henxel:
     text = next((str(item[k]) for k in HEADLINE_KEYS if k in item), "(unnamed henxel)")
     locations = _norm_locations(item.get("in"))
+    excludes = _norm_excludes(item.get("except"))
     level = "warn" if str(item.get("level", "")).lower() == "warn" else "block"
     statements = {k: v for k, v in item.items() if k not in RESERVED}
-    return Henxel(text=text, locations=locations, level=level, statements=statements)
+    return Henxel(text=text, locations=locations, excludes=excludes, level=level, statements=statements)
 
 
 def _norm_locations(value) -> list[str]:
@@ -88,6 +90,13 @@ def _norm_locations(value) -> list[str]:
         return ["./*"]
     out = [str(v).strip() for v in (value if isinstance(value, list) else [value])]
     return out or ["./*"]
+
+
+def _norm_excludes(value) -> list[str]:
+    """`except:` carves files out of scope. Absent = exclude nothing (NOT the whole repo)."""
+    if value is None:
+        return []
+    return [str(v).strip() for v in (value if isinstance(value, list) else [value])]
 
 
 # Drop a file at one of these (relative to the repo root) and henxels auto-loads it —

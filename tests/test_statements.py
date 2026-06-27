@@ -16,6 +16,24 @@ def run(name, param, scope):
     return get_statement(name).fn(param, scope)
 
 
+# --- except: scope exclusions --------------------------------------------
+
+def test_build_scope_excludes(tmp_path):
+    files = {"a.md": "x", "raw/b.md": "y", "index.md": "z"}
+    for rel, content in files.items():
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+    s = build_scope(["./*"], list(files), tmp_path, {}, excludes=["./raw/*", "index.md"])
+    assert s.files == ["a.md"]
+
+
+def test_build_scope_no_excludes_keeps_all(tmp_path):
+    files = {"a.md": "x", "raw/b.md": "y"}
+    s = scope_for(tmp_path, files)  # excludes default to none
+    assert set(s.files) == {"a.md", "raw/b.md"}
+
+
 # --- casing (MATCH: scalar, and list = OR) -------------------------------
 
 def test_casing_scalar_pass(tmp_path):
@@ -65,6 +83,120 @@ def test_frontmatter_all_present(tmp_path):
 def test_frontmatter_missing(tmp_path):
     s = scope_for(tmp_path, {"d.md": "---\ntitle: t\n---\n# h\n"})
     assert run("required_frontmatter", ["title", "summary"], s)
+
+
+# --- frontmatter_dates (ISO YYYY-MM-DD) ----------------------------------
+
+def test_frontmatter_dates_quoted_valid(tmp_path):
+    s = scope_for(tmp_path, {"d.md": '---\ncreated: "2026-06-28"\nupdated: "2026-06-28"\n---\n'})
+    assert run("frontmatter_dates", ["created", "updated"], s) == []
+
+
+def test_frontmatter_dates_accepts_yaml_date(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ncreated: 2026-06-28\n---\n"})  # YAML parses to a date object
+    assert run("frontmatter_dates", "created", s) == []
+
+
+def test_frontmatter_dates_wrong_format(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ncreated: 27/06/2026\n---\n"})
+    assert run("frontmatter_dates", "created", s)
+
+
+def test_frontmatter_dates_impossible_calendar(tmp_path):
+    s = scope_for(tmp_path, {"d.md": '---\ncreated: "2026-13-40"\n---\n'})
+    assert run("frontmatter_dates", "created", s)
+
+
+def test_frontmatter_dates_absent_is_silent(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntitle: t\n---\n"})  # required_frontmatter owns presence
+    assert run("frontmatter_dates", "created", s) == []
+
+
+# --- frontmatter_values (scalar ∈ set; list ⊆ set) -----------------------
+
+def test_frontmatter_values_scalar_ok(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntype: entity\n---\n"})
+    assert run("frontmatter_values", {"type": ["entity", "concept"]}, s) == []
+
+
+def test_frontmatter_values_scalar_bad(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntype: gizmo\n---\n"})
+    assert run("frontmatter_values", {"type": ["entity", "concept"]}, s)
+
+
+def test_frontmatter_values_list_subset_ok(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntags: [person, org]\n---\n"})
+    assert run("frontmatter_values", {"tags": ["person", "org", "tool"]}, s) == []
+
+
+def test_frontmatter_values_list_has_outsider(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntags: [person, alien]\n---\n"})
+    assert run("frontmatter_values", {"tags": ["person", "org"]}, s)
+
+
+# --- frontmatter_sha256_matches ------------------------------------------
+
+def test_frontmatter_sha256_matches(tmp_path):
+    import hashlib
+
+    body = "The body text.\n"
+    digest = hashlib.sha256(body.encode()).hexdigest()
+    s = scope_for(tmp_path, {"raw/a.md": f"---\nsource_url: http://x\nsha256: {digest}\n---\n{body}"})
+    assert run("frontmatter_sha256_matches", "sha256", s) == []
+
+
+def test_frontmatter_sha256_mismatch(tmp_path):
+    s = scope_for(tmp_path, {"raw/a.md": "---\nsha256: deadbeef\n---\nThe body text.\n"})
+    assert run("frontmatter_sha256_matches", "sha256", s)
+
+
+# --- links ---------------------------------------------------------------
+
+def test_links_resolve_ok(tmp_path):
+    from henxels.statements.builtins.links import links_resolve
+
+    s = scope_for(tmp_path, {"a.md": "see [b](b.md)\n", "b.md": "hi\n"})
+    assert links_resolve(s) == []
+
+
+def test_links_resolve_dead(tmp_path):
+    from henxels.statements.builtins.links import links_resolve
+
+    assert links_resolve(scope_for(tmp_path, {"a.md": "[gone](missing.md)\n"}))
+
+
+def test_links_resolve_relative_subdir_and_anchor(tmp_path):
+    from henxels.statements.builtins.links import links_resolve
+
+    files = {"entities/a.md": "[x](../concepts/x.md) and [self](#top)\n", "concepts/x.md": "hi\n"}
+    assert links_resolve(scope_for(tmp_path, files)) == []
+
+
+def test_links_are_relative_flags_absolute(tmp_path):
+    from henxels.statements.builtins.links import links_are_relative
+
+    assert links_are_relative(scope_for(tmp_path, {"a.md": "[x](/abs/path.md)\n"}))
+
+
+def test_links_are_relative_allows_external_and_relative(tmp_path):
+    from henxels.statements.builtins.links import links_are_relative
+
+    s = scope_for(tmp_path, {"a.md": "[x](b.md) and [y](https://x.com)\n"})
+    assert links_are_relative(s) == []
+
+
+def test_min_outbound_links(tmp_path):
+    ok = scope_for(tmp_path, {"a.md": "[b](b.md) [c](c.md)\n"})  # one page, two outbound
+    assert run("min_outbound_links", 2, ok) == []
+    short = scope_for(tmp_path, {"a.md": "only [b](b.md)\n"})
+    assert run("min_outbound_links", 2, short)
+
+
+def test_referenced_in(tmp_path):
+    files = {"index.md": "- [Tom](entities/tom.md)\n", "entities/tom.md": "x", "entities/ann.md": "y"}
+    out = run("referenced_in", "index.md", scope_for(tmp_path, files))
+    assert any("ann.md" in v for v in out)
+    assert not any("tom.md" in v for v in out)
 
 
 # --- forbidden_files (FORBID: none of these) -----------------------------
@@ -161,6 +293,33 @@ def test_well_formed_statements_on_real_repo():
     root = Path(__file__).resolve().parent.parent
     scope = build_scope(["./*"], discover(root), root, {})
     assert well_formed_statements(scope) == []
+
+
+# --- max_lines (per-file budget) -----------------------------------------
+
+def test_max_lines(tmp_path):
+    from henxels.statements.builtins.size import max_lines
+
+    s = scope_for(tmp_path, {"a.md": "x\n" * 10})
+    assert max_lines(5, "a.md", s)        # 10 > 5 → instruction
+    assert max_lines(50, "a.md", s) is None
+
+
+# --- no_secrets ----------------------------------------------------------
+
+def test_no_secrets_flags_private_key(tmp_path):
+    s = scope_for(tmp_path, {"a.md": "oops:\n-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n"})
+    assert run("no_secrets", True, s)
+
+
+def test_no_secrets_flags_hardcoded(tmp_path):
+    s = scope_for(tmp_path, {"a.md": 'password = "hunter2hunter2"\n'})
+    assert run("no_secrets", True, s)
+
+
+def test_no_secrets_clean(tmp_path):
+    s = scope_for(tmp_path, {"a.md": "normal prose about tokens of wisdom and secret gardens\n"})
+    assert run("no_secrets", True, s) == []
 
 
 # --- must_not_exist ------------------------------------------------------
