@@ -19,7 +19,7 @@ def test_render_digest():
     assert "Docs are kebab-case markdown (in ./docs)" in d
     assert "Parking lot exists" in d and "_(warn)_" in d
     assert "bless push" in d
-    assert "ask the user before staging" in d
+    assert "Git etiquette" in d and "git add" in d  # prominent, imperative staging directive
     assert "henxels catalogue" in d
     assert "contribute" in d
     assert "↳ Holds work that ships this cycle." in d  # why: rides into the digest

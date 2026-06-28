@@ -89,6 +89,8 @@ Each bullet is a **henxel** (a rule). To disobey one, change `henxels.yaml` —
 that is the only sanctioned escape. Run `henxels explain <path>` before creating
 a file to see what governs that spot.
 
+> **Git etiquette — important.** Do **not** run `git add`, `git commit`, or `git push` yourself in this repo. When your work is ready, stop and ask the user to review the diff and stage it. Staging on the user's behalf is a mistake here, even if the change looks correct.
+
 ### Rules
 
 - The package code is snake_case (including subpackages) (in ./henxels/*)
@@ -96,6 +98,7 @@ a file to see what governs that spot.
 - Docs are kebab-case markdown, each with a title and summary (in ./docs)
 - Project config lives only in pyproject.toml
 - Statements stay merge-ready (every one has a help= and a test)
+- README links are absolute (it's the long-description on PyPI and npm) (in ./README.md)
 - The scratch folder must exist
 - The parking lot should exist (gitignored — only a reminder) _(warn)_
 - Code is clean and conventional (ruff) before every commit
@@ -104,7 +107,7 @@ a file to see what governs that spot.
 
 ### Behaviours
 
-- ask the user before staging/pushing (don't `git add` reflexively)
+- **never `git add` / `git commit` / `git push` yourself** — ask the user to review and stage
 - push is blocked until `henxels bless push`
 - deleting files / removing many lines is blocked until `henxels bless delete`
 - warns when a new file looks like a near-copy of a committed one

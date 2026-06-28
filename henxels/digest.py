@@ -25,6 +25,18 @@ def render_digest(contract: Contract) -> str:
         "that is the only sanctioned escape. Run `henxels explain <path>` before creating",
         "a file to see what governs that spot.",
         "",
+    ]
+    if contract.settings.get("ask_me_before_staging"):
+        # Git can't be hooked before `git add`, so this lives or dies on being read.
+        # Make it loud and imperative, and put it up top — small models skim the rest.
+        lines += [
+            "> **Git etiquette — important.** Do **not** run `git add`, `git commit`, or "
+            "`git push` yourself in this repo. When your work is ready, stop and ask the user "
+            "to review the diff and stage it. Staging on the user's behalf is a mistake here, "
+            "even if the change looks correct.",
+            "",
+        ]
+    lines += [
         "### Rules",
         "",
     ]
@@ -56,7 +68,7 @@ def _render_settings(contract: Contract) -> list[str]:
     s = contract.settings
     out = []
     if s.get("ask_me_before_staging"):
-        out.append("- ask the user before staging/pushing (don't `git add` reflexively)")
+        out.append("- **never `git add` / `git commit` / `git push` yourself** — ask the user to review and stage")
     if s.get("confirm_before_push"):
         out.append("- push is blocked until `henxels bless push`")
     if s.get("confirm_before_deleting"):
