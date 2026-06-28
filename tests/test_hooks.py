@@ -42,3 +42,11 @@ def test_force_overwrites_foreign(git_repo):
 def test_no_git_reported(tmp_path):
     result = install_hooks(tmp_path)
     assert result["pre-commit"] == "no-git"
+
+
+def test_hook_prefers_project_venv_over_global(git_repo):
+    install_hooks(git_repo)
+    script = (git_repo / ".git" / "hooks" / "pre-commit").read_text()
+    # the project's own env is checked before a global `henxels` on PATH
+    assert "$VIRTUAL_ENV/bin/henxels" in script
+    assert script.index(".venv/bin/henxels") < script.index("command -v henxels")
