@@ -9,6 +9,7 @@ Importing this package registers every built-in (each category module runs its
     links       cross-page navigation      (links_resolve, links_are_relative, min_outbound_links, referenced_in)
     size        per-file line budgets      (max_lines)
     security    things that must not ship  (no_secrets)
+    history     rules about change         (append_only, immutable, bump_updated_on_change)
     meta        the statement library      (well_formed_statements)
     commands    git-stage command gates    (run_before_commit, run_before_push)
 """
@@ -16,6 +17,7 @@ Importing this package registers every built-in (each category module runs its
 from henxels.statements.builtins import (  # noqa: F401  (imported for registration)
     commands,
     content,
+    history,
     links,
     meta,
     naming,

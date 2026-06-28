@@ -14,6 +14,7 @@ from pathlib import Path
 from henxels import bless, settings
 from henxels.commands import run_commands
 from henxels.contract import ContractError, apply_imports, find_contract, load_contract
+from henxels.diffinfo import staged_diff
 from henxels.engine import gitinfo
 from henxels.findings import Finding
 from henxels.guard import collect_deletions, deletion_finding, push_finding
@@ -38,7 +39,7 @@ def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list
     if contract is None:
         return 0, []
 
-    findings: list[Finding] = run_contract(contract, root)
+    findings: list[Finding] = run_contract(contract, root, diff=staged_diff(root))
 
     sim = settings.similarity(contract)
     if sim:

@@ -55,6 +55,31 @@ def staged_numstat(root: Path | str) -> list[tuple[int, int, str]]:
     return out
 
 
+def staged_name_status(root: Path | str) -> list[tuple[str, str]]:
+    """(status letter, path) per staged change: A/M/D (renames reported as M on the new path)."""
+    res = _run(["git", "diff", "--cached", "--name-status"], root)
+    out: list[tuple[str, str]] = []
+    if res is None or res.returncode != 0:
+        return out
+    for line in res.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2:
+            out.append((parts[0][0], parts[-1]))  # parts[-1] = new path (handles R<score>\told\tnew)
+    return out
+
+
+def file_at_head(root: Path | str, rel: str) -> str | None:
+    """Contents of ``rel`` at HEAD (None if absent or not a repo)."""
+    res = _run(["git", "show", f"HEAD:{rel}"], root)
+    return res.stdout if res is not None and res.returncode == 0 else None
+
+
+def file_in_index(root: Path | str, rel: str) -> str | None:
+    """Staged contents of ``rel`` (the version that would be committed)."""
+    res = _run(["git", "show", f":{rel}"], root)
+    return res.stdout if res is not None and res.returncode == 0 else None
+
+
 def tracked_files(root: Path | str) -> list[str]:
     """Files committed/tracked by git (the corpus similarity compares against)."""
     res = _run(["git", "ls-files"], root)

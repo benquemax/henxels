@@ -27,6 +27,7 @@ from henxels.contract import (
     find_contract,
     load_contract,
 )
+from henxels.diffinfo import staged_diff
 from henxels.engine import gitinfo
 from henxels.engine.discover import discover
 from henxels.engine.report import is_fancy, render, render_summary, summarize
@@ -135,14 +136,15 @@ def cmd_check(args) -> int:
         print(exc, file=sys.stderr)
         return 2
 
+    staged_mode = False
     if args.paths:
         files = [_rel(p, root) for p in args.paths]
     elif args.staged:
-        files = gitinfo.staged_files(root)
+        files, staged_mode = gitinfo.staged_files(root), True
     elif args.all:
         files = discover(root)
     elif gitinfo.is_git_repo(root):
-        files = gitinfo.staged_files(root)
+        files, staged_mode = gitinfo.staged_files(root), True
     else:
         files = discover(root)
 
@@ -150,7 +152,10 @@ def cmd_check(args) -> int:
         print("Nothing to check.")
         return 0
 
-    findings = run_contract(contract, root, files)
+    # Diff-aware statements (append_only, immutable, bump_updated_on_change) only make
+    # sense against staged change — outside that, diff is None and they pass.
+    diff = staged_diff(root) if staged_mode else None
+    findings = run_contract(contract, root, files, diff=diff)
     sim = settings.similarity(contract)
     if sim:
         from henxels.similarity import warn_similar

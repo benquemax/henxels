@@ -17,7 +17,9 @@ from henxels.statements.registry import StatementDef, get_statement
 from henxels.statements.scope import Scope, build_scope
 
 
-def run_contract(contract: Contract, root: Path | str, files: list[str] | None = None) -> list[Finding]:
+def run_contract(
+    contract: Contract, root: Path | str, files: list[str] | None = None, diff=None
+) -> list[Finding]:
     root = Path(root)
     all_files = files if files is not None else discover(root)
 
@@ -32,7 +34,7 @@ def run_contract(contract: Contract, root: Path | str, files: list[str] | None =
                 continue
             if sdef.stage is not None:
                 continue  # command gate; runs in the hooks
-            instructions.extend(_invoke(sdef, param, scope, hx.text))
+            instructions.extend(_invoke(sdef, param, scope, hx.text, diff))
 
         if instructions:
             findings.append(
@@ -48,8 +50,8 @@ def run_contract(contract: Contract, root: Path | str, files: list[str] | None =
     return findings
 
 
-def _invoke(sdef: StatementDef, param, scope: Scope, sentence: str) -> list[str]:
-    avail = {"param": param, "scope": scope, "root": scope.root, "settings": scope.settings}
+def _invoke(sdef: StatementDef, param, scope: Scope, sentence: str, diff=None) -> list[str]:
+    avail = {"param": param, "scope": scope, "root": scope.root, "settings": scope.settings, "diff": diff}
 
     def call(extra=None):
         args = {**avail, **(extra or {})}

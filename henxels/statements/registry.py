@@ -11,6 +11,8 @@ Inject any of these by naming them as parameters (take only what you need):
     file       opt-in PER-FILE mode: henxels runs your function once per file in scope
     root       the repo root (Path)
     settings   the contract's settings dict
+    diff       the staged diff (StagedDiff) at commit time, else None — for rules about
+               *change*: diff.modified/added/deleted, diff.old_text()/new_text()
 
 Return convention (any of these):
 
@@ -38,7 +40,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 STAGES = ("pre_commit", "pre_push")
-INJECTABLE = ("param", "scope", "file", "root", "settings")
+INJECTABLE = ("param", "scope", "file", "root", "settings", "diff")
 
 
 @dataclass

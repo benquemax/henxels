@@ -109,6 +109,12 @@
         "must_not_exist": { "type": "boolean" },
         "max_lines": { "type": "integer", "minimum": 1, "description": "each file in scope stays under this many lines" },
         "no_secrets": { "type": "boolean", "description": "files contain no credentials (private keys, API tokens, passwords)" },
+        "append_only": { "type": "boolean", "description": "staged edits only add lines to the end; existing lines are never changed" },
+        "immutable": { "type": "boolean", "description": "files here can be added but never modified once committed" },
+        "bump_updated_on_change": {
+          "description": "when a page's content changes, its date field must change too (default field: updated)",
+          "oneOf": [{ "type": "boolean" }, { "type": "string" }]
+        },
         "markdown_lint": { "type": "boolean" },
         "markdown_links_absolute": { "type": "boolean" },
         "links_are_relative": { "type": "boolean", "description": "internal markdown links are relative, not absolute paths" },
