@@ -86,6 +86,9 @@
         "in": { "$ref": "#/$defs/scalarOrList", "description": "where this henxel applies: ./docs = that folder, ./docs/* = recursively, ./ = repo root, ./* = whole repo (default)" },
         "except": { "$ref": "#/$defs/scalarOrList", "description": "paths/globs carved out of in: (e.g. exclude ./raw/* and index.md from a ./* page rule)" },
         "level": { "type": "string", "enum": ["block", "warn"] },
+        "why": { "type": "string", "description": "background/reasoning: why the rule exists, how the target is used, what purpose it serves. Not a test — it rides into AGENTS.md so agents read the intent. Aliases: context, comment." },
+        "context": { "type": "string", "description": "alias of why:" },
+        "comment": { "type": "string", "description": "alias of why:" },
 
         "filename_casing": {
           "description": "file names use this naming convention (list = any of)",

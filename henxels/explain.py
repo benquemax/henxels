@@ -22,6 +22,8 @@ def explain_path(contract: Contract, rel_path: str) -> str:
     for hx in matched:
         tag = " [warn]" if hx.level == "warn" else ""
         lines.append(f"  • {hx.text}{tag}")
+        if hx.why:
+            lines.append(f"      ↳ {' '.join(hx.why.split())}")
         for name, param in hx.statements.items():
             lines.append(f"      {name}: {_fmt(param)}")
     return "\n".join(lines)
@@ -33,7 +35,7 @@ def explain_data(contract: Contract, rel_path: str) -> dict:
     return {
         "path": path,
         "henxels": [
-            {"henxel": hx.text, "in": hx.locations, "level": hx.level, "statements": hx.statements}
+            {"henxel": hx.text, "why": hx.why, "in": hx.locations, "level": hx.level, "statements": hx.statements}
             for hx in contract.henxels
             if _governs(path, hx)
         ],

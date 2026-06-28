@@ -32,6 +32,8 @@ def render_digest(contract: Contract) -> str:
         tag = " _(warn)_" if hx.level == "warn" else ""
         where = "" if hx.locations in ([], ["./*"]) else f" (in {', '.join(hx.locations)})"
         lines.append(f"- {hx.text}{where}{tag}")
+        if hx.why:
+            lines.append(f"  ↳ {' '.join(hx.why.split())}")  # the reasoning, for the agent
 
     behaviours = _render_settings(contract)
     if behaviours:

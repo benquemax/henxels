@@ -72,6 +72,28 @@ def test_except_absent_is_empty(tmp_path):
     assert c.henxels[0].excludes == []
 
 
+def test_why_and_aliases_parsed(tmp_path):
+    p = _write(
+        tmp_path,
+        "henxels.yaml",
+        """
+henxels:
+  - henxel: "_now, _next, _later exist in roadmap"
+    in: ./roadmap
+    required_subfolders: [_now, _next, _later]
+    why: "The roadmap is planned now -> next -> later; route each item into its bucket."
+  - henxel: "Other"
+    comment: "comment is an alias of why"
+    required_files: a.md
+""",
+    )
+    c = load_contract(p)
+    assert c.henxels[0].why == "The roadmap is planned now -> next -> later; route each item into its bucket."
+    assert "why" not in c.henxels[0].statements  # reserved, not a statement
+    assert c.henxels[1].why == "comment is an alias of why"  # alias works
+    assert c.henxels[0].statements == {"required_subfolders": ["_now", "_next", "_later"]}
+
+
 def test_explicit_import(tmp_path):
     _write(
         tmp_path,

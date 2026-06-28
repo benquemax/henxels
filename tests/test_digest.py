@@ -8,6 +8,8 @@ CONTRACT = Contract(
     henxels=[
         Henxel(text="Docs are kebab-case markdown", locations=["./docs"], statements={"filename_casing": "kebab-case"}),
         Henxel(text="Parking lot exists", locations=["./*"], level="warn", statements={"required_files": "_todo.md"}),
+        Henxel(text="_now exists in roadmap", locations=["./roadmap"], why="Holds work that ships this cycle.",
+               statements={"required_subfolders": "_now"}),
     ],
 )
 
@@ -20,6 +22,7 @@ def test_render_digest():
     assert "ask the user before staging" in d
     assert "henxels catalogue" in d
     assert "contribute" in d
+    assert "↳ Holds work that ships this cycle." in d  # why: rides into the digest
 
 
 def test_update_block_appends_and_replaces():

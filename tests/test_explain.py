@@ -24,12 +24,21 @@ def test_explain_data_json_shape():
     texts = [h["henxel"] for h in data["henxels"]]
     assert "Docs are kebab-case markdown" in texts
     first = data["henxels"][0]
-    assert set(first) == {"henxel", "in", "level", "statements"}
+    assert set(first) == {"henxel", "why", "in", "level", "statements"}
 
 
 def test_explain_silent_location():
     out = explain_path(Contract(henxels=[Henxel(text="x", locations=["./src"], statements={})]), "docs/x.md")
     assert "no henxels apply" in out
+
+
+def test_explain_shows_why():
+    contract = Contract(henxels=[
+        Henxel(text="_now exists in roadmap", locations=["./roadmap"], why="Work shipping this cycle lives here.",
+               statements={"required_subfolders": "_now"}),
+    ])
+    assert "↳ Work shipping this cycle lives here." in explain_path(contract, "roadmap/x.md")
+    assert explain_data(contract, "roadmap/x.md")["henxels"][0]["why"] == "Work shipping this cycle lives here."
 
 
 def test_explain_respects_except():

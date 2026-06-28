@@ -18,7 +18,10 @@ import yaml
 
 # Keys on a henxel item that are NOT statements.
 HEADLINE_KEYS = ("henxel", "rule", "must", "description")
-RESERVED = set(HEADLINE_KEYS) | {"in", "level", "except"}
+# Free-text reasoning/background for a henxel — not a test; it just rides into the
+# AGENTS.md digest (and `explain`) so agents read the *purpose* of the structure.
+CONTEXT_KEYS = ("why", "context", "comment")
+RESERVED = set(HEADLINE_KEYS) | set(CONTEXT_KEYS) | {"in", "level", "except"}
 
 
 DEFAULT_FILENAMES = ("henxels.yaml", ".henxels.yaml", "henxels.yml", ".henxels.yml")
@@ -43,6 +46,7 @@ class Henxel:
     locations: list[str] = field(default_factory=lambda: ["./*"])  # raw `in:` specs
     excludes: list[str] = field(default_factory=list)  # raw `except:` specs carved out of scope
     level: str = "block"  # block | warn
+    why: str = ""  # free-text reasoning/background (surfaced in the digest + explain)
     statements: dict = field(default_factory=dict)  # {name: params}, excludes reserved keys
 
 
@@ -78,11 +82,12 @@ def load_contract(path: Path | str) -> Contract:
 
 def _to_henxel(item: dict) -> Henxel:
     text = next((str(item[k]) for k in HEADLINE_KEYS if k in item), "(unnamed henxel)")
+    why = next((str(item[k]) for k in CONTEXT_KEYS if k in item), "")
     locations = _norm_locations(item.get("in"))
     excludes = _norm_excludes(item.get("except"))
     level = "warn" if str(item.get("level", "")).lower() == "warn" else "block"
     statements = {k: v for k, v in item.items() if k not in RESERVED}
-    return Henxel(text=text, locations=locations, excludes=excludes, level=level, statements=statements)
+    return Henxel(text=text, locations=locations, excludes=excludes, level=level, why=why, statements=statements)
 
 
 def _norm_locations(value) -> list[str]:
