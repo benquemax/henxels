@@ -76,36 +76,29 @@ Browse every statement you can use with **`henxels catalogue`**.
 
 ## Quick start
 
-### Install
+Henxels can be installed by your agent or by you manually.
 
-```bash
-uv tool install henxels      # puts `henxels` on your PATH (recommended)
-# alternatives:
-#   pipx install henxels     # same idea, via pipx
-#   uvx henxels <cmd>        # zero-install, run on demand
-#   npm i -g henxels         # node-friendly launcher (shims to Python)
-```
+### Agentic instructions
 
-> If henxels lives only inside a project venv, invoke it as `uv run henxels …`. The git
-> hooks resolve it either way, and henxels' own messages always print the form that
-> works in your shell.
-
-### Give this to your agent
+Paste this to your coding agent:
 
 > Install henxels (`uv tool install henxels`, or `pipx install henxels`, or
-> `npm i -D henxels` — it shims to Python; install a prerequisite if one's missing).
+> `npm i -g henxels` — it shims to Python; install a prerequisite if one's missing).
 > Run `henxels init`, then tailor `henxels.yaml` to this repo's folders (run
-> `henxels catalogue` to see the statements), and run `henxels sync` and
+> `henxels catalogue` to see the statements), and finish with `henxels sync` and
 > `henxels check --all`.
 
-### Or yourself
+### Manual instructions
 
 ```bash
-henxels init            # scaffold contract + git hooks + AGENTS.md digest
-henxels catalogue       # browse the statements you can use
-henxels explain docs/x.md   # what governs this path?
-henxels check --all     # run the contract
+uv tool install henxels   # or: pipx install henxels · uvx henxels · npm i -g henxels
+henxels init              # scaffold contract + git hooks + AGENTS.md digest
+henxels catalogue         # browse the statements you can use
+henxels check --all       # run the contract
 ```
+
+> If henxels lives only inside a project venv, invoke it as `uv run henxels …` — the git
+> hooks resolve it either way.
 
 ---
 
