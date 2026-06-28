@@ -86,6 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     pd = sub.add_parser("doctor", help="check that henxels is correctly set up")
     pd.set_defaults(func=cmd_doctor)
 
+    pint = sub.add_parser("integrate", help="install an agent-harness integration (e.g. opencode)")
+    pint.add_argument("harness")
+    pint.set_defaults(func=cmd_integrate)
+
     # Git passes arguments to its hooks (pre-push gets "<remote> <url>"); swallow them.
     p_pc = sub.add_parser("_precommit")
     p_pc.add_argument("hook_args", nargs="*")
@@ -307,6 +311,19 @@ def cmd_doctor(args) -> int:
     print("henxels is ready." if all_ok else "Some checks need attention (see above).")
     _notify_update()
     return 0 if all_ok else 1
+
+
+def cmd_integrate(args) -> int:
+    from henxels.integrate import write_integration
+
+    try:
+        path, action = write_integration(args.harness, Path.cwd())
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    rel = path.relative_to(Path.cwd()) if path.is_absolute() else path
+    print(f"✓ {rel} {action} — {args.harness} integration installed.")
+    return 0
 
 
 def cmd_sync(args) -> int:

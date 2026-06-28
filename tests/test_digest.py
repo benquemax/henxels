@@ -20,6 +20,7 @@ def test_render_digest():
     assert "Parking lot exists" in d and "_(warn)_" in d
     assert "bless push" in d
     assert "Git etiquette" in d and "git add" in d  # prominent, imperative staging directive
+    assert "integrate opencode" in d  # opencode agents told to self-install the guard
     assert "henxels catalogue" in d
     assert "contribute" in d
     assert "↳ Holds work that ships this cycle." in d  # why: rides into the digest

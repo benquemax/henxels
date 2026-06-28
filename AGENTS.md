@@ -90,6 +90,8 @@ that is the only sanctioned escape. Run `henxels explain <path>` before creating
 a file to see what governs that spot.
 
 > **Git etiquette — important.** Do **not** run `git add`, `git commit`, or `git push` yourself in this repo. When your work is ready, stop and ask the user to review the diff and stage it. Staging on the user's behalf is a mistake here, even if the change looks correct.
+>
+> _OpenCode agents:_ run `henxels integrate opencode` once to make this **enforced** (it hard-blocks `git add`/`git commit`), not just advisory.
 
 ### Rules
 

@@ -48,6 +48,7 @@ include = ["henxels*"]
 
 [tool.setuptools.package-data]
 henxels = ["schema/*.json"]
+"henxels.integrations" = ["*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

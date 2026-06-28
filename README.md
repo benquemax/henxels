@@ -214,6 +214,7 @@ in pre-commit and CI, so a green local run means your PR is merge-ready. See
 | `henxels create-new-statement <name>` | scaffold a custom statement |
 | `henxels contribute [name]` | how to upstream a reusable statement |
 | `henxels bless <push\|delete>` | consciously override a guard |
+| `henxels integrate <harness>` | install an agent-harness integration (e.g. `opencode`) |
 | `henxels sync` / `henxels doctor` | refresh the digest / check the setup |
 
 ## License

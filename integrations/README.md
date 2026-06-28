@@ -25,7 +25,7 @@ The in-loop recipes are thin glue around three commands:
 | Harness | In-loop mechanism | Recipe |
 |---|---|---|
 | **Claude Code** | `PreToolUse` / `PostToolUse` hooks | [`claude-code/`](claude-code/) |
-| **OpenCode** | plugin `tool.execute.before` | [`opencode/`](opencode/) |
+| **OpenCode** | plugin `tool.execute.before` | `henxels integrate opencode` (or [`opencode/`](opencode/)) |
 | **Aider** | `--lint-cmd` (runs after each edit) | [`aider/`](aider/) |
 | **Hermes** | Agent Skill + command-approval + git hooks | [`skill/`](skill/) |
 | **Pi** | Agent Skill / TypeScript extension + git hooks | [`skill/`](skill/) |
