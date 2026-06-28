@@ -47,6 +47,13 @@ def diagnose(root: Path | str) -> list[Check]:
     missing = sorted(referenced - known)
     checks.append(Check(not missing, "statements resolve", ", ".join(missing) if missing else "all known"))
 
+    # Custom checks that reinvent a built-in (or use a settings name) — the common
+    # small-model mistake. Surface it so it gets fixed, not silently shadowed.
+    from henxels.statements.registry import custom_collisions
+
+    collisions = custom_collisions()
+    checks.append(Check(not collisions, "custom checks", "ok" if not collisions else "; ".join(collisions)))
+
     # markdown_lint is a no-op without its optional dependency — surface that here so a
     # missing linter is a visible setup nudge, not a silently-skipped check.
     if "markdown_lint" in referenced:

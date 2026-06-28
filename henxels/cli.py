@@ -183,6 +183,14 @@ def cmd_check(args) -> int:
         from henxels.filesize import warn_large_files
 
         findings.extend(warn_large_files(large, root, files))
+
+    from henxels.statements.registry import custom_collisions
+
+    collisions = custom_collisions()
+    if collisions:
+        findings.append(
+            Finding(level="warn", henxel="A custom check reinvents a built-in", path="", message="", details=collisions)
+        )
     code = _emit(findings, plain=args.plain)
     _notify_update()
     return code

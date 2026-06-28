@@ -86,8 +86,10 @@ Paste this to your coding agent:
 > `npm i -g henxels` — it shims to Python; install a prerequisite if one's missing).
 > Run `henxels init`, then tailor `henxels.yaml` to this repo's folders (run
 > `henxels catalogue` to see the statements), and finish with `henxels sync` and
-> `henxels check --all`. Then commit (or ask the user to) `henxels.yaml`, `AGENTS.md`,
-> and `.henxels/` — they're the contract; **don't gitignore `.henxels/`**.
+> `henxels check --all`. Before writing any custom check, run `henxels catalogue` and use
+> the built-in that fits — don't reinvent one, and never name a check after a built-in or a
+> setting. Then commit (or ask the user to) `henxels.yaml`, `AGENTS.md`, and `.henxels/` —
+> they're the contract; **don't gitignore `.henxels/`**.
 
 ### Manual instructions
 

@@ -42,6 +42,17 @@ from dataclasses import dataclass
 STAGES = ("pre_commit", "pre_push")
 INJECTABLE = ("param", "scope", "file", "root", "settings", "diff")
 
+# Behaviours that live under `settings:`, not as henxel statements. A custom check that
+# uses one of these names is almost always a reinvented built-in (the #1 small-model
+# mistake), so we flag it.
+SETTINGS_NAMES = (
+    "ask_me_before_staging",
+    "confirm_before_push",
+    "confirm_before_deleting",
+    "warn_about_similar_files",
+    "warn_about_large_files",
+)
+
 
 @dataclass
 class StatementDef:
@@ -55,6 +66,8 @@ class StatementDef:
 
 
 _REGISTRY: dict[str, StatementDef] = {}
+_BUILTIN_NAMES: set[str] = set()
+_SHADOWED_BUILTINS: set[str] = set()  # custom checks that tried to override a built-in
 
 
 def statement(name: str, *, stage: str | None = None, help: str | None = None, builtin: bool = False):
@@ -71,10 +84,19 @@ def statement(name: str, *, stage: str | None = None, help: str | None = None, b
                 f"choose from {INJECTABLE}"
             )
         summary = help or (inspect.getdoc(fn) or "").split("\n", 1)[0]
-        _REGISTRY[name] = StatementDef(
+        sdef = StatementDef(
             name=name, fn=fn, stage=stage, params=params,
             per_file="file" in params, help=summary, builtin=builtin,
         )
+        if builtin:
+            _BUILTIN_NAMES.add(name)
+            _REGISTRY[name] = sdef
+        elif name in _BUILTIN_NAMES:
+            # A custom check must NOT silently replace a built-in — keep the built-in,
+            # remember the clash so `check`/`doctor` can warn.
+            _SHADOWED_BUILTINS.add(name)
+        else:
+            _REGISTRY[name] = sdef
         return fn
 
     return decorate
@@ -86,6 +108,31 @@ def get_statement(name: str) -> StatementDef | None:
 
 def all_statements() -> dict[str, StatementDef]:
     return dict(_REGISTRY)
+
+
+def custom_collisions() -> list[str]:
+    """Human-readable warnings for custom checks that clash with built-ins or settings —
+    the proactive guard against reinventing something henxels already does."""
+    msgs: list[str] = []
+    for name in sorted(_SHADOWED_BUILTINS):
+        msgs.append(
+            f"custom check '{name}' clashes with a built-in of the same name — the built-in "
+            f"is used and yours is ignored. Rename it, or drop it and use the built-in "
+            f"(run `henxels catalogue`)."
+        )
+    for name in SETTINGS_NAMES:
+        sdef = _REGISTRY.get(name)
+        if sdef is not None and not sdef.builtin:
+            msgs.append(
+                f"'{name}' is a setting (a behaviour), not a check — delete the custom statement "
+                f"and put it under `settings:` in henxels.yaml instead."
+            )
+    return msgs
+
+
+def reset_collisions() -> None:
+    """Test helper: forget recorded built-in clashes."""
+    _SHADOWED_BUILTINS.clear()
 
 
 def as_list(value):
