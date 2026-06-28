@@ -5,13 +5,12 @@
 # Bump BOTH pyproject.toml and npm/package.json to the same version before tagging;
 # the `verify` job fails the release if the tag and the two files disagree.
 #
-# ── One-time setup (web UI; can't be scripted) ───────────────────────────────
-#   PyPI (no secret — OIDC Trusted Publishing):
-#     pypi.org → henxels → Manage → Publishing → Add a GitHub publisher:
+# ── One-time setup (web UI; no tokens — both use OIDC Trusted Publishing) ─────
+#   PyPI:  pypi.org → henxels → Manage → Publishing → Add a GitHub publisher:
 #       owner = benquemax · repo = henxels · workflow = release.yml · environment = (blank)
-#   npm (one secret):
-#     npmjs.com → Access Tokens → Generate (granular, read-write on `henxels`)
-#     GitHub → repo Settings → Secrets and variables → Actions → new secret NPM_TOKEN
+#   npm:   npmjs.com → henxels → Settings → Trusted Publisher → GitHub Actions:
+#       org/user = benquemax · repository = henxels · workflow filename = release.yml
+#       environment = (blank) · allowed action = Allow npm publish
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: release
@@ -49,16 +48,16 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # provenance attestation
+      id-token: write # OIDC for npm Trusted Publishing (no token) + provenance
       contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
+      - name: Use an npm new enough for trusted publishing
+        run: npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
       - name: Publish launcher
         working-directory: npm
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

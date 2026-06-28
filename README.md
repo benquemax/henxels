@@ -126,6 +126,56 @@ only what you need. Return `None`/`True` to pass, or a string instruction to fai
 
 ---
 
+## Tips & tricks
+
+### Explain the *why*, not just the rule
+
+A henxel's sentence says **how** the structure must be; a **`why:`** (aliases `context:` /
+`comment:`) says *why it exists and how the thing it governs should be used*. It isn't a
+test — it rides into `AGENTS.md`, so the agent reads the **purpose** of your structure,
+not just the constraint. This is some of the cheapest, highest-leverage steering you can
+give a small model.
+
+```yaml
+  - henxel: "_now, _next, _later exist in roadmap"
+    in: ./roadmap
+    required_subfolders: [_now, _next, _later]
+    why: "The roadmap is planned now -> next -> later; route each new item into its bucket."
+```
+
+### Make an exception — on purpose
+
+`except:` carves paths out of a rule's scope, so a general rule can have a sanctioned,
+reviewable hole:
+
+```yaml
+  - henxel: "No secrets in tracked files (the vault is the one allowed home)"
+    in: ./*
+    except: ["./vault/*"]
+    no_secrets: true
+```
+
+### Hard-enforce "ask me before staging" in OpenCode
+
+`ask_me_before_staging` is advisory by default (git has no pre-add hook). In OpenCode you
+can make it enforced — and the agent installs the guard itself:
+
+```bash
+henxels integrate opencode
+```
+
+### Budget files in tokens, not just lines
+
+A file too big for the agent's context window is one it can't reason over — so warn in the
+unit the agent actually feels:
+
+```yaml
+settings:
+  warn_about_large_files: { over: 8000 tokens }   # also: 200 lines | 3 kb
+```
+
+---
+
 ## Example: keeping an LLM wiki from scattering
 
 An **LLM wiki** — a markdown knowledge base an agent reads and writes (the pattern
