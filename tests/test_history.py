@@ -3,7 +3,12 @@
 import subprocess
 
 from henxels.diffinfo import staged_diff
-from henxels.statements.builtins.history import append_only, bump_updated_on_change, immutable
+from henxels.statements.builtins.history import (
+    append_only,
+    bump_updated_on_change,
+    changed_with,
+    immutable,
+)
 from henxels.statements.scope import build_scope
 
 
@@ -87,6 +92,33 @@ def test_bump_updated_satisfied(tmp_path):
     assert bump_updated_on_change("updated", _scope(r, ["p.md"]), staged_diff(r)) == []
 
 
+# --- changed_with (commit-time companion reminder) -----------------------
+
+def test_changed_with_warns_when_companion_missing(tmp_path):
+    r = _repo(tmp_path)
+    _commit(r, "code.py", "x\n")
+    _commit(r, "docs/d.md", "x\n")
+    _stage(r, "code.py", "y\n")  # changed code, but not docs
+    assert changed_with({"when": "code.py", "expect": "docs/*"}, staged_diff(r))
+
+
+def test_changed_with_satisfied_when_companion_changes(tmp_path):
+    r = _repo(tmp_path)
+    _commit(r, "code.py", "x\n")
+    _commit(r, "docs/d.md", "x\n")
+    _stage(r, "code.py", "y\n")
+    _stage(r, "docs/d.md", "y\n")  # both changed → no reminder
+    assert changed_with({"when": "code.py", "expect": "docs/*"}, staged_diff(r)) is None
+
+
+def test_changed_with_quiet_when_trigger_untouched(tmp_path):
+    r = _repo(tmp_path)
+    _commit(r, "code.py", "x\n")
+    _commit(r, "docs/d.md", "x\n")
+    _stage(r, "docs/d.md", "y\n")  # only docs changed; trigger not touched
+    assert changed_with({"when": "code.py", "expect": "docs/*"}, staged_diff(r)) is None
+
+
 # --- no diff (e.g. check --all) → every history statement passes ----------
 
 def test_no_diff_is_noop(tmp_path):
@@ -94,3 +126,4 @@ def test_no_diff_is_noop(tmp_path):
     assert append_only(True, s, None) == []
     assert immutable(True, s, None) == []
     assert bump_updated_on_change("updated", s, None) == []
+    assert changed_with({"when": "a", "expect": "b"}, None) is None

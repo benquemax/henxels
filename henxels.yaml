@@ -52,3 +52,9 @@ henxels:
 
   - henxel: "The contract holds before every push"
     run_before_push: "uv run henxels check --all"
+
+  - henxel: "Behaviour changes update the docs"
+    changed_with:                  # a commit-time reminder; only fires when relevant
+      when: henxels/**             # if package code is staged...
+      expect: [docs/**, README.md, AGENTS.md]   # ...so should the docs
+    level: warn

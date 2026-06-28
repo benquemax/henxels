@@ -109,6 +109,7 @@ a file to see what governs that spot.
 - Code is clean and conventional (ruff) before every commit
 - The test suite passes before every commit
 - The contract holds before every push
+- Behaviour changes update the docs _(warn)_
 
 ### Behaviours
 

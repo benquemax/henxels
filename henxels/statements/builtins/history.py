@@ -7,7 +7,8 @@ diff is None and they pass — there's no change to judge.
 from __future__ import annotations
 
 from henxels.statements.builtins._helpers import parse_frontmatter
-from henxels.statements.registry import statement
+from henxels.statements.registry import as_list, statement
+from henxels.util.glob import glob_match
 
 
 @statement("append_only", help="staged edits only add lines to the end; existing lines are never changed", builtin=True)
@@ -34,6 +35,29 @@ def immutable(param, scope, diff):
         for f in scope.files
         if f in diff.modified
     ]
+
+
+@statement(
+    "changed_with",
+    help="commit-time reminder: when files matching `when` are staged, files matching `expect` should change too",
+    builtin=True,
+)
+def changed_with(param, diff):
+    if diff is None or not isinstance(param, dict):
+        return None
+    when = as_list(param.get("when"))
+    expect = as_list(param.get("expect"))
+    if not when or not expect:
+        return None
+    staged = diff.added | diff.modified | diff.deleted
+    if not any(glob_match(p, f) for f in staged for p in when):
+        return None  # the trigger files weren't touched — stay quiet
+    if any(glob_match(p, f) for f in staged for p in expect):
+        return None  # a companion changed too — satisfied
+    return (
+        f"you changed {', '.join(when)} but none of {', '.join(expect)} — "
+        f"update them in this commit if the change affects them"
+    )
 
 
 @statement("bump_updated_on_change", help="when a page's content changes, its date field must change too", builtin=True)

@@ -118,6 +118,14 @@
           "description": "when a page's content changes, its date field must change too (default field: updated)",
           "oneOf": [{ "type": "boolean" }, { "type": "string" }]
         },
+        "changed_with": {
+          "type": "object",
+          "description": "commit-time reminder: when files matching `when` are staged, files matching `expect` should change too (pair with level: warn)",
+          "properties": {
+            "when": { "$ref": "#/$defs/scalarOrList" },
+            "expect": { "$ref": "#/$defs/scalarOrList" }
+          }
+        },
         "markdown_lint": { "type": "boolean" },
         "markdown_links_absolute": { "type": "boolean" },
         "links_are_relative": { "type": "boolean", "description": "internal markdown links are relative, not absolute paths" },

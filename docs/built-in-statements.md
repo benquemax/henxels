@@ -70,6 +70,18 @@ These ask for the staged diff, so they only act at commit time:
 - **`immutable`** — files here can be added but never modified once committed.
 - **`bump_updated_on_change`** — when a page's content changes, its date field must change
   too.
+- **`changed_with`** — a commit-time reminder: when files matching `when` are staged, files
+  matching `expect` should change too. It only fires when relevant, so it never nags on an
+  unrelated commit. Pair it with `level: warn` — e.g. remind that a code change should touch
+  the docs:
+
+```yaml
+  - henxel: "Behaviour changes update the docs"
+    changed_with:
+      when: src/**
+      expect: [docs/**, README.md]
+    level: warn
+```
 
 ## Commands and meta
 
