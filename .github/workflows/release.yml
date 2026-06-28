@@ -1,0 +1,64 @@
+# Release henxels to PyPI + npm when a version tag is pushed.
+#
+#   git tag v0.5.1 && git push origin v0.5.1
+#
+# Bump BOTH pyproject.toml and npm/package.json to the same version before tagging;
+# the `verify` job fails the release if the tag and the two files disagree.
+#
+# ── One-time setup (web UI; can't be scripted) ───────────────────────────────
+#   PyPI (no secret — OIDC Trusted Publishing):
+#     pypi.org → henxels → Manage → Publishing → Add a GitHub publisher:
+#       owner = benquemax · repo = henxels · workflow = release.yml · environment = (blank)
+#   npm (one secret):
+#     npmjs.com → Access Tokens → Generate (granular, read-write on `henxels`)
+#     GitHub → repo Settings → Secrets and variables → Actions → new secret NPM_TOKEN
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches pyproject + npm versions
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PY=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          NPM=$(grep -m1 '"version"' npm/package.json | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "tag=$TAG  pyproject=$PY  npm=$NPM"
+          { [ "$TAG" = "$PY" ] && [ "$TAG" = "$NPM" ]; } || {
+            echo "::error::version mismatch — tag=$TAG pyproject=$PY npm=$NPM"; exit 1; }
+
+  pypi:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for PyPI Trusted Publishing (no token needed)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # provenance attestation
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Publish launcher
+        working-directory: npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
