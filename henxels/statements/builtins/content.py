@@ -120,7 +120,9 @@ def markdown_lint(scope):
         return []
     cmd = _pymarkdown_cmd()
     if cmd is None:
-        return ["install pymarkdownlnt to enable markdown_lint:  pip install pymarkdownlnt"]
+        # Optional dep absent → don't block a commit over a missing linter.
+        # `henxels doctor` surfaces it as a setup nudge instead.
+        return []
 
     issues = []
     for f in md_files:
@@ -157,6 +159,11 @@ def markdown_links_absolute(scope):
                 continue
             violations.append(f"{f} — make this link absolute: {t}")
     return violations
+
+
+def pymarkdown_available() -> bool:
+    """Whether the optional markdown linter is installed (used by `henxels doctor`)."""
+    return _pymarkdown_cmd() is not None
 
 
 def _pymarkdown_cmd():

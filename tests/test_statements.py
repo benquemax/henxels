@@ -262,6 +262,14 @@ def test_markdown_lint_clean(tmp_path):
     assert markdown_lint(s) == []
 
 
+def test_markdown_lint_passes_when_tool_missing(tmp_path, monkeypatch):
+    from henxels.statements.builtins import content
+
+    monkeypatch.setattr(content, "_pymarkdown_cmd", lambda: None)
+    s = scope_for(tmp_path, {"docs/bad.md": "# Title \n\nno final newline"}, locations=["./docs"])
+    assert content.markdown_lint(s) == []  # missing optional dep → pass, never block
+
+
 def test_markdown_links_absolute(tmp_path):
     from henxels.statements.builtins.content import markdown_links_absolute
 

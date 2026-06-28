@@ -47,6 +47,16 @@ def diagnose(root: Path | str) -> list[Check]:
     missing = sorted(referenced - known)
     checks.append(Check(not missing, "statements resolve", ", ".join(missing) if missing else "all known"))
 
+    # markdown_lint is a no-op without its optional dependency — surface that here so a
+    # missing linter is a visible setup nudge, not a silently-skipped check.
+    if "markdown_lint" in referenced:
+        from henxels.statements.builtins.content import pymarkdown_available
+
+        avail = pymarkdown_available()
+        checks.append(
+            Check(avail, "markdown_lint ready", "" if avail else "install pymarkdownlnt (e.g. `henxels[markdown]`)")
+        )
+
     if git:
         for hook, present in hooks_status(root).items():
             checks.append(Check(present, f"hook: {hook}", "" if present else "run `henxels init`"))

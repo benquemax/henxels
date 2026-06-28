@@ -42,6 +42,18 @@ def test_doctor_green_after_init(git_repo):
     assert all(c.ok for c in checks), [(c.label, c.detail) for c in checks if not c.ok]
 
 
+def test_doctor_flags_missing_markdown_linter(git_repo, monkeypatch):
+    (git_repo / "henxels.yaml").write_text(
+        'henxels:\n  - henxel: "Docs lint"\n    in: ./docs\n    markdown_lint: true\n', encoding="utf-8"
+    )
+    from henxels.statements.builtins import content
+
+    monkeypatch.setattr(content, "_pymarkdown_cmd", lambda: None)
+    checks = diagnose(git_repo)
+    md = next(c for c in checks if c.label == "markdown_lint ready")
+    assert not md.ok and "pymarkdownlnt" in md.detail
+
+
 def test_cli_init_then_doctor(git_repo, monkeypatch, capsys):
     (git_repo / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     monkeypatch.chdir(git_repo)
