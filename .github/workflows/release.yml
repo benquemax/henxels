@@ -57,7 +57,12 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - name: Use an npm new enough for trusted publishing
-        run: npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
+        run: |
+          npm install -g npm@latest   # trusted publishing needs npm >= 11.5.1
+          node --version
+          npm --version               # confirm it's >= 11.5.1 in the logs
       - name: Publish launcher
         working-directory: npm
-        run: npm publish --provenance --access public
+        # No token and no --provenance: OIDC trusted publishing authenticates and
+        # attaches provenance automatically (id-token: write above).
+        run: npm publish --access public
