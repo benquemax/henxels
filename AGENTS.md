@@ -79,6 +79,9 @@ tests/              one module per unit
   never repo-relative. The README is the long-description on PyPI and npm, where
   relative links are dead. Absolute links work on GitHub too, so use them everywhere in
   the README.
+- **Docs travel with code.** Whenever you change behaviour, update the `README.md` and the
+  relevant article under `docs/` in the *same* change. Add a new `docs/` guide for a new
+  feature area, and a README teaser linking to it. A doc that lies is worse than no doc.
 
 <!-- henxels:begin -->
 ## The contract (henxels)

@@ -18,13 +18,38 @@ henxels:
     required_frontmatter: title
 ```
 
-## Scoping with `in:`
+## Scoping with `in:` and `except:`
 
 Paths are anchored at the repo root, and recursion is explicit via a trailing `*`:
 
 - `./docs` — files **directly in** docs/ (this level only)
 - `./docs/*` — docs/ **and all subfolders**
 - `./` — the repo root; `./*` — the whole repo (the default when `in:` is omitted)
+
+`except:` carves paths out of the scope, so a broad rule can have a sanctioned hole:
+
+```yaml
+  - henxel: "No secrets anywhere — except the vault, on purpose"
+    in: ./*
+    except: ["./vault/*", "./"]   # "./" excludes all root-level files
+    no_secrets: true
+```
+
+## Level and reasoning
+
+A henxel can carry two more optional keys:
+
+- `level: warn` — surface the henxel but never block (default is `block`).
+- `why:` (aliases `context:` / `comment:`) — free-text background that rides into
+  `AGENTS.md`, so the agent reads *why* the rule exists and how to use what it governs.
+  It is not a test.
+
+```yaml
+  - henxel: "_now, _next, _later exist in roadmap"
+    in: ./roadmap
+    required_subfolders: [_now, _next, _later]
+    why: "The roadmap is planned now -> next -> later; route each item into its bucket."
+```
 
 ## Statements
 
@@ -56,3 +81,7 @@ def max_lines(param, file, scope):
 
 Arguments are injected by name; return a string instruction to fail. If your statement
 is reusable beyond this repo, contribute it: `henxels contribute`.
+
+For the full reference — where check files live, the injection API, return values, and the
+collision guard — see [Custom checks](custom-checks.md). For the standard library, see
+[Built-in statements](built-in-statements.md).

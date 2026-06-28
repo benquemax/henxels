@@ -186,6 +186,22 @@ settings:
 
 ---
 
+## Documentation
+
+The README is the tour; the deeper guides live in
+[`docs/`](https://github.com/benquemax/henxels/tree/main/docs):
+
+- [Getting started](https://github.com/benquemax/henxels/blob/main/docs/getting-started.md) — install, init, validate.
+- [Writing henxels](https://github.com/benquemax/henxels/blob/main/docs/writing-henxels.md) — the contract: `in:`, `except:`, `level:`, `why:`.
+- [Built-in statements](https://github.com/benquemax/henxels/blob/main/docs/built-in-statements.md) — the standard library.
+- [Custom checks](https://github.com/benquemax/henxels/blob/main/docs/custom-checks.md) — write your own statements.
+- [Settings](https://github.com/benquemax/henxels/blob/main/docs/settings.md) — behaviours (staging, push, delete, similarity, large files).
+- [Guards and bless](https://github.com/benquemax/henxels/blob/main/docs/guards-and-bless.md) — how the protections work.
+- [Agent integrations](https://github.com/benquemax/henxels/blob/main/docs/agent-integrations.md) — the AGENTS.md digest and harness hooks.
+- [Upgrading](https://github.com/benquemax/henxels/blob/main/docs/upgrading.md) — the version nag, refreshing local files, schema evolution.
+
+---
+
 ## Example: keeping an LLM wiki from scattering
 
 An **LLM wiki** — a markdown knowledge base an agent reads and writes (the pattern
