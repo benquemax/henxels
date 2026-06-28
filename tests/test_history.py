@@ -8,6 +8,7 @@ from henxels.statements.builtins.history import (
     bump_updated_on_change,
     changed_with,
     immutable,
+    must_be_in_sync,
 )
 from henxels.statements.scope import build_scope
 
@@ -119,6 +120,34 @@ def test_changed_with_quiet_when_trigger_untouched(tmp_path):
     assert changed_with({"when": "code.py", "expect": "docs/*"}, staged_diff(r)) is None
 
 
+# --- must_be_in_sync (symmetric companion reminder) ----------------------
+
+def test_must_be_in_sync_warns_when_partial(tmp_path):
+    r = _repo(tmp_path)
+    _commit(r, "en.json", "x\n")
+    _commit(r, "fi.json", "x\n")
+    _stage(r, "en.json", "y\n")  # one of the pair changed, not the other
+    out = must_be_in_sync([["en.json", "fi.json"]], staged_diff(r))
+    assert out and "fi.json" in out[0]
+
+
+def test_must_be_in_sync_quiet_when_all_change(tmp_path):
+    r = _repo(tmp_path)
+    _commit(r, "en.json", "x\n")
+    _commit(r, "fi.json", "x\n")
+    _stage(r, "en.json", "y\n")
+    _stage(r, "fi.json", "y\n")  # both moved together
+    assert must_be_in_sync([["en.json", "fi.json"]], staged_diff(r)) is None
+
+
+def test_must_be_in_sync_accepts_a_single_flat_group(tmp_path):
+    r = _repo(tmp_path)
+    _commit(r, "a.txt", "x\n")
+    _commit(r, "b.txt", "x\n")
+    _stage(r, "a.txt", "y\n")
+    assert must_be_in_sync(["a.txt", "b.txt"], staged_diff(r))  # flat list = one group
+
+
 # --- no diff (e.g. check --all) → every history statement passes ----------
 
 def test_no_diff_is_noop(tmp_path):
@@ -127,3 +156,4 @@ def test_no_diff_is_noop(tmp_path):
     assert immutable(True, s, None) == []
     assert bump_updated_on_change("updated", s, None) == []
     assert changed_with({"when": "a", "expect": "b"}, None) is None
+    assert must_be_in_sync([["a", "b"]], None) is None

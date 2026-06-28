@@ -38,8 +38,33 @@ def immutable(param, scope, diff):
 
 
 @statement(
+    "must_be_in_sync",
+    help="commit-time reminder: groups of files/folders that change together — warns if some did and some didn't",
+    builtin=True,
+)
+def must_be_in_sync(param, diff):
+    if diff is None:
+        return None
+    groups = param if isinstance(param, list) else []
+    if groups and all(isinstance(g, str) for g in groups):
+        groups = [groups]  # a single group given as a flat list: [a, b]
+    staged = diff.added | diff.modified | diff.deleted
+    out = []
+    for group in groups:
+        members = as_list(group)
+        if len(members) < 2:
+            continue
+        changed = [m for m in members if any(glob_match(m, f) for f in staged)]
+        if not changed or len(changed) == len(members):
+            continue  # group untouched, or everything moved together
+        missing = [m for m in members if m not in changed]
+        out.append(f"{', '.join(changed)} changed but {', '.join(missing)} didn't — keep them in sync")
+    return out or None
+
+
+@statement(
     "changed_with",
-    help="commit-time reminder: when files matching `when` are staged, files matching `expect` should change too",
+    help="commit-time reminder: when files matching `when` are staged, files matching `expect` should change too (directional)",
     builtin=True,
 )
 def changed_with(param, diff):

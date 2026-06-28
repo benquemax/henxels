@@ -120,10 +120,17 @@
         },
         "changed_with": {
           "type": "object",
-          "description": "commit-time reminder: when files matching `when` are staged, files matching `expect` should change too (pair with level: warn)",
+          "description": "commit-time reminder (directional): when files matching `when` are staged, files matching `expect` should change too (pair with level: warn)",
           "properties": {
             "when": { "$ref": "#/$defs/scalarOrList" },
             "expect": { "$ref": "#/$defs/scalarOrList" }
+          }
+        },
+        "must_be_in_sync": {
+          "description": "commit-time reminder (symmetric): groups of files/folders that change together. A flat list is one group; a list of lists is several. Pair with level: warn.",
+          "type": "array",
+          "items": {
+            "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
           }
         },
         "markdown_lint": { "type": "boolean" },

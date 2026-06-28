@@ -70,10 +70,25 @@ These ask for the staged diff, so they only act at commit time:
 - **`immutable`** — files here can be added but never modified once committed.
 - **`bump_updated_on_change`** — when a page's content changes, its date field must change
   too.
-- **`changed_with`** — a commit-time reminder: when files matching `when` are staged, files
-  matching `expect` should change too. It only fires when relevant, so it never nags on an
-  unrelated commit. Pair it with `level: warn` — e.g. remind that a code change should touch
-  the docs:
+Two commit-time **reminders** that only fire when relevant — so they never nag on an
+unrelated commit. Pair both with `level: warn`.
+
+- **`must_be_in_sync`** — *symmetric*. Groups of files/folders that change together; warns
+  if some members changed and others didn't. Use it for genuinely-coupled files, where a
+  change to any one should touch the rest — translation files, a schema and its generated
+  client, a lockfile and its manifest. A flat list is one group; a list of lists is several.
+
+```yaml
+  - henxel: "Translations stay in sync"
+    must_be_in_sync:
+      - [i18n/en.json, i18n/fi.json, i18n/de.json]
+      - [api/schema.json, api/generated-client.ts]
+    level: warn
+```
+
+- **`changed_with`** — *directional*. When files matching `when` are staged, files matching
+  `expect` should change too — but not the reverse. Use it when the relationship has a
+  direction, like code → docs (a docs-only typo fix shouldn't be nagged to change code):
 
 ```yaml
   - henxel: "Behaviour changes update the docs"
@@ -82,6 +97,9 @@ These ask for the staged diff, so they only act at commit time:
       expect: [docs/**, README.md]
     level: warn
 ```
+
+Rule of thumb: reach for `must_be_in_sync` when the files are *peers* that always move
+together, and `changed_with` when one *follows* the other.
 
 ## Commands and meta
 
