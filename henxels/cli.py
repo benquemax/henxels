@@ -115,6 +115,18 @@ def _load(root: Path, config_path: str | None = None) -> Contract:
     return contract
 
 
+def _notify_update() -> None:
+    """Print an upgrade nudge to stderr (so stdout stays machine-clean). Never raises."""
+    try:
+        from henxels.version_check import update_notice
+
+        notice = update_notice()
+        if notice:
+            print(notice, file=sys.stderr)
+    except Exception:  # noqa: BLE001 - an update check must never affect the command
+        pass
+
+
 def _emit(findings: list[Finding], plain: bool = False) -> int:
     fancy = is_fancy() and not plain
     text = render(findings, fancy=fancy)
@@ -167,7 +179,9 @@ def cmd_check(args) -> int:
         from henxels.filesize import warn_large_files
 
         findings.extend(warn_large_files(large, root, files))
-    return _emit(findings, plain=args.plain)
+    code = _emit(findings, plain=args.plain)
+    _notify_update()
+    return code
 
 
 def cmd_explain(args) -> int:
@@ -291,6 +305,7 @@ def cmd_doctor(args) -> int:
             print(f"  {mark} {c.label}{tail}")
     print()
     print("henxels is ready." if all_ok else "Some checks need attention (see above).")
+    _notify_update()
     return 0 if all_ok else 1
 
 
