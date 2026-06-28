@@ -12,6 +12,7 @@ def test_parse_and_compare():
 def test_notice_when_outdated():
     n = vc.update_notice(installed="0.3.0", latest="0.4.0", env={})
     assert n and "0.4.0" in n and "0.3.0" in n
+    assert "init" in n  # nudge to refresh hooks + schema after upgrading
 
 
 def test_no_notice_when_current_or_newer():

@@ -101,8 +101,9 @@ git add henxels.yaml AGENTS.md .henxels/   # commit your contract (see note belo
 
 > **Commit `.henxels/`, don't gitignore it.** It holds the JSON schema your editor uses
 > for autocomplete (your `henxels.yaml` points at it) and any custom checks you add — and
-> custom checks are contract logic that CI and teammates need. Re-run `henxels init` after
-> upgrading henxels to refresh the local schema.
+> custom checks are contract logic that CI and teammates need. After upgrading henxels,
+> re-run `henxels init` to refresh the local schema, git hooks, and digest (it leaves your
+> `henxels.yaml` untouched).
 >
 > If henxels lives only inside a project venv, invoke it as `uv run henxels …` — the git
 > hooks resolve it either way.

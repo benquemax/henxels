@@ -43,7 +43,10 @@ def update_notice(installed=_UNSET, latest=_UNSET, env: dict | None = None) -> s
             return None
     except (TypeError, ValueError):
         return None
-    return f"↑ henxels {lat} is available (you have {inst}) — upgrade: uv tool upgrade henxels (or pipx/pip -U)"
+    return (
+        f"↑ henxels {lat} is available (you have {inst}) — upgrade: uv tool upgrade henxels "
+        f"(or pipx/pip -U), then run `henxels init` to refresh hooks + schema"
+    )
 
 
 def latest_version(timeout: float = 1.5, now: float | None = None) -> str | None:
