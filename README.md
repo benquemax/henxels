@@ -86,7 +86,8 @@ Paste this to your coding agent:
 > `npm i -g henxels` — it shims to Python; install a prerequisite if one's missing).
 > Run `henxels init`, then tailor `henxels.yaml` to this repo's folders (run
 > `henxels catalogue` to see the statements), and finish with `henxels sync` and
-> `henxels check --all`.
+> `henxels check --all`. Then commit (or ask the user to) `henxels.yaml`, `AGENTS.md`,
+> and `.henxels/` — they're the contract; **don't gitignore `.henxels/`**.
 
 ### Manual instructions
 
@@ -95,8 +96,14 @@ uv tool install henxels   # or: pipx install henxels · uvx henxels · npm i -g 
 henxels init              # scaffold contract + git hooks + AGENTS.md digest
 henxels catalogue         # browse the statements you can use
 henxels check --all       # run the contract
+git add henxels.yaml AGENTS.md .henxels/   # commit your contract (see note below)
 ```
 
+> **Commit `.henxels/`, don't gitignore it.** It holds the JSON schema your editor uses
+> for autocomplete (your `henxels.yaml` points at it) and any custom checks you add — and
+> custom checks are contract logic that CI and teammates need. Re-run `henxels init` after
+> upgrading henxels to refresh the local schema.
+>
 > If henxels lives only inside a project venv, invoke it as `uv run henxels …` — the git
 > hooks resolve it either way.
 

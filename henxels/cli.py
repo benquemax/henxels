@@ -288,6 +288,8 @@ def cmd_init(args) -> int:
     print(f"  • Tailor the rules: edit henxels.yaml (browse `{hx} catalogue` for statements).")
     print(f"  • Ask what governs a spot: {hx} explain <path>")
     print(f"  • Validate everything:    {hx} check --all")
+    print("  • Commit henxels.yaml, AGENTS.md, and .henxels/ — they're your contract")
+    print("    (don't gitignore .henxels/: it holds the editor schema + any custom checks).")
     print("  • To disobey a rule, change henxels.yaml — that's the whole idea.")
     if hx != "henxels":
         print(f"  • Tip: `uv tool install henxels` (or pipx) puts `henxels` on your PATH so you can drop `{hx.rsplit(' ', 1)[0]} `.")
