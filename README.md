@@ -89,7 +89,9 @@ Paste this to your coding agent:
 > `henxels check --all`. Before writing any custom check, run `henxels catalogue` and use
 > the built-in that fits — don't reinvent one, and never name a check after a built-in or a
 > setting. Then commit (or ask the user to) `henxels.yaml`, `AGENTS.md`, and `.henxels/` —
-> they're the contract; **don't gitignore `.henxels/`**.
+> they're the contract; **don't gitignore `.henxels/`**. Also add a short "install
+> henxels" line to the repo's README — the committed contract assumes the tool is
+> installed, so contributors and CI need to know to get it.
 
 ### Manual instructions
 
@@ -99,6 +101,7 @@ henxels init              # scaffold contract + git hooks + AGENTS.md digest
 henxels catalogue         # browse the statements you can use
 henxels check --all       # run the contract
 git add henxels.yaml AGENTS.md .henxels/   # commit your contract (see note below)
+# then add an "install henxels" line to your README — the contract assumes it's installed
 ```
 
 > **Commit `.henxels/`, don't gitignore it.** It holds the JSON schema your editor uses

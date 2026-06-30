@@ -282,6 +282,11 @@ def cmd_init(args) -> int:
         for hook, outcome in hooks.items():
             mark = "✓" if outcome in ("installed", "updated") else "•"
             print(f"{mark} git hook {hook}: {outcome}")
+        shadowed = report.get("hooks_shadowed")
+        if shadowed:
+            print(f"⚠ git hooks won't fire: core.hooksPath={shadowed} shadows .git/hooks.")
+            print("    Unset it (`git config --unset core.hooksPath`), or call")
+            print("    `henxels _precommit` / `henxels _prepush` from those hooks.")
     if report.get("digest"):
         print(f"✓ AGENTS.md {report['digest']} — agents now see the contract")
     if report.get("schema"):
@@ -298,6 +303,8 @@ def cmd_init(args) -> int:
     print(f"  • Validate everything:    {hx} check --all")
     print("  • Commit henxels.yaml, AGENTS.md, and .henxels/ — they're your contract")
     print("    (don't gitignore .henxels/: it holds the editor schema + any custom checks).")
+    print("  • Tell contributors how to install henxels: add it to your README")
+    print("    (the committed contract assumes `henxels` is installed).")
     print("  • To disobey a rule, change henxels.yaml — that's the whole idea.")
     if hx != "henxels":
         print(f"  • Tip: `uv tool install henxels` (or pipx) puts `henxels` on your PATH so you can drop `{hx.rsplit(' ', 1)[0]} `.")

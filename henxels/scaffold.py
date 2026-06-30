@@ -10,7 +10,7 @@ from pathlib import Path
 
 from henxels.contract import load_contract
 from henxels.digest import sync_file
-from henxels.engine.gitinfo import is_git_repo
+from henxels.engine.gitinfo import is_git_repo, shadowing_hooks_path
 from henxels.hooks import install_hooks
 from henxels.schema import schema_text
 
@@ -120,6 +120,9 @@ def init(root: Path | str, install_git_hooks: bool = True, write_digest: bool = 
     report["schema"] = LOCAL_SCHEMA_PATH
 
     report["hooks"] = install_hooks(root) if (install_git_hooks and is_git_repo(root)) else None
+    # If core.hooksPath (husky, etc.) shadows .git/hooks, the hooks we wrote there won't
+    # fire — record it so init warns instead of a silent no-op.
+    report["hooks_shadowed"] = shadowing_hooks_path(root) if report["hooks"] else None
 
     if write_digest:
         contract = load_contract(cfg_path)

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from henxels.contract import ContractError, apply_imports, find_contract, load_contract
-from henxels.engine.gitinfo import is_git_repo
-from henxels.hooks import hooks_status
+from henxels.engine.gitinfo import is_git_repo, shadowing_hooks_path
+from henxels.hooks import HOOKS, hooks_status
 from henxels.statements.registry import all_statements
 
 
@@ -65,8 +65,24 @@ def diagnose(root: Path | str) -> list[Check]:
         )
 
     if git:
+        # henxels installs into .git/hooks — but if core.hooksPath (husky, lefthook, …)
+        # points elsewhere, git ignores .git/hooks and our hooks never run. Report the
+        # truth, not a misleading green.
+        shadowed = shadowing_hooks_path(root)
         for hook, present in hooks_status(root).items():
-            checks.append(Check(present, f"hook: {hook}", "" if present else "run `henxels init`"))
+            if present and not shadowed:
+                checks.append(Check(True, f"hook: {hook}"))
+            elif present and shadowed:
+                checks.append(
+                    Check(
+                        False,
+                        f"hook: {hook}",
+                        f"core.hooksPath={shadowed} shadows .git/hooks — henxels won't run; "
+                        f"unset it, or call `henxels {HOOKS[hook]}` from that {hook} hook",
+                    )
+                )
+            else:
+                checks.append(Check(False, f"hook: {hook}", "run `henxels init`"))
 
     agents = root / "AGENTS.md"
     has_digest = agents.is_file() and "henxels:begin" in agents.read_text(encoding="utf-8", errors="replace")

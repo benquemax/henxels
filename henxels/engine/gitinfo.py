@@ -93,3 +93,47 @@ def head_sha(root: Path | str) -> str | None:
     if res is None or res.returncode != 0:
         return None
     return res.stdout.strip() or None
+
+
+def configured_hooks_path(root: Path | str) -> str | None:
+    """The raw ``core.hooksPath`` config value, or None if unset.
+
+    husky (and lefthook, etc.) set this to redirect git away from ``.git/hooks``.
+    """
+    res = _run(["git", "config", "--get", "core.hooksPath"], root)
+    if res is None or res.returncode != 0:
+        return None
+    return res.stdout.strip() or None
+
+
+def effective_hooks_dir(root: Path | str) -> Path | None:
+    """The hooks directory git will actually use, honoring ``core.hooksPath``.
+
+    We let git resolve it (``git rev-parse --git-path hooks``) instead of assuming
+    ``.git/hooks`` — so when something repoints ``core.hooksPath`` we see where hooks
+    really run. Absolute path, or None when git is unavailable.
+    """
+    res = _run(["git", "rev-parse", "--git-path", "hooks"], root)
+    if res is None or res.returncode != 0:
+        return None
+    out = res.stdout.strip()
+    if not out:
+        return None
+    path = Path(out)
+    if not path.is_absolute():
+        path = Path(root) / path
+    return path.resolve()
+
+
+def shadowing_hooks_path(root: Path | str) -> str | None:
+    """If ``core.hooksPath`` is set and points away from ``.git/hooks``, return that
+    configured value (the thing shadowing henxels' hooks); otherwise None.
+
+    The single source of truth for "are .git/hooks shadowed?", so init and doctor agree.
+    """
+    configured = configured_hooks_path(root)
+    if configured is None:
+        return None
+    effective = effective_hooks_dir(root)
+    default = (Path(root) / ".git" / "hooks").resolve()
+    return configured if (effective is not None and effective != default) else None
