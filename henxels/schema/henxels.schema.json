@@ -137,6 +137,7 @@
         "markdown_links_absolute": { "type": "boolean" },
         "links_are_relative": { "type": "boolean", "description": "internal markdown links are relative, not absolute paths" },
         "links_resolve": { "type": "boolean", "description": "every relative internal markdown link points at a real file" },
+        "rooted_links_resolve": { "type": "string", "description": "root-absolute internal links (/x/y) resolve to a real page under this site root dir (e.g. ./docs/content)" },
         "min_outbound_links": { "type": "integer", "minimum": 0, "description": "each page links out to at least N other pages" },
         "referenced_in": { "type": "string", "description": "every page in scope is linked from this index file (e.g. index.md)" },
         "well_formed_statements": { "type": "boolean" },

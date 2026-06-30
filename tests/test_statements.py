@@ -199,6 +199,31 @@ def test_referenced_in(tmp_path):
     assert not any("tom.md" in v for v in out)
 
 
+# --- rooted_links_resolve (root-absolute links, e.g. VitePress /a/b) ------
+
+def test_rooted_links_resolve_ok(tmp_path):
+    # /guide/intro -> guide/intro.md ; / -> index.md ; /guide/ -> guide/index.md ; #anchor dropped
+    files = {
+        "content/a.md": "[intro](/guide/intro#install) [home](/) [g](/guide/)\n",
+        "content/guide/intro.md": "hi\n",
+        "content/index.md": "home\n",
+        "content/guide/index.md": "guide home\n",
+    }
+    assert run("rooted_links_resolve", "content", scope_for(tmp_path, files)) == []
+
+
+def test_rooted_links_resolve_dead(tmp_path):
+    out = run("rooted_links_resolve", "content", scope_for(tmp_path, {"content/a.md": "[gone](/guide/missing)\n"}))
+    assert out and "/guide/missing" in out[0]
+
+
+def test_rooted_links_resolve_ignores_relative_external_and_assets(tmp_path):
+    # relative (links_resolve's job), external, in-page anchors, and asset files are skipped.
+    # /slides.html is built output / a public asset (served at root), not a source page.
+    files = {"content/a.md": "[rel](b.md) [ext](https://x.com) [img](/logo.png) [deck](/slides.html) [self](#top)\n"}
+    assert run("rooted_links_resolve", "content", scope_for(tmp_path, files)) == []
+
+
 # --- forbidden_files (FORBID: none of these) -----------------------------
 
 def test_forbidden_bare_name_anywhere(tmp_path):

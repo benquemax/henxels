@@ -98,3 +98,50 @@ def referenced_in(param, scope):
         if f not in referenced:
             violations.append(f"{f} — add it to {index} under the right section")
     return violations
+
+
+def _rooted_candidates(root_dir: str, target: str) -> list[str]:
+    """Files a root-absolute link could resolve to under ``root_dir`` (the dir ``/`` maps
+    to). Returns [] for links we don't validate — assets with a non-page extension."""
+    path = target.split("#", 1)[0].split("?", 1)[0]  # drop #anchor and ?query
+    if path in ("", "/"):
+        return [posixpath.join(root_dir, "index.md")]
+    rel = path.lstrip("/")
+    base = posixpath.normpath(posixpath.join(root_dir, rel))
+    if path.endswith("/"):  # /guide/ → guide/index.md
+        return [posixpath.join(base, "index.md")]
+    ext = re.search(r"\.[A-Za-z0-9]{1,6}$", rel.rsplit("/", 1)[-1])
+    if ext:
+        # only .md is a source page; .html is built output and other extensions are assets,
+        # all served from a public/static dir this statement doesn't model — so skip them
+        return [base] if ext.group(0).lower() == ".md" else []
+    return [base + ".md", posixpath.join(base, "index.md")]  # /a/b → a/b.md or a/b/index.md
+
+
+@statement(
+    "rooted_links_resolve",
+    help="root-absolute internal links (/x/y) resolve to a real page under the site root dir",
+    builtin=True,
+)
+def rooted_links_resolve(param, scope):
+    """Counterpart to links_resolve for sites that use root-absolute links (VitePress,
+    Docusaurus): a link like /guide/intro is resolved against the configured site root,
+    not the linking file's folder. param is that root (e.g. ./docs/content)."""
+    root_dir = param if isinstance(param, str) else None
+    if not root_dir:
+        return []
+    root_dir = root_dir.strip()
+    if root_dir.startswith("./"):
+        root_dir = root_dir[2:]
+    root_dir = root_dir.strip("/") or "."
+    violations = []
+    for f in scope.files:
+        if not f.endswith(".md"):
+            continue
+        for t in _internal_targets(scope.read_text(f)):
+            if not t.startswith("/"):
+                continue  # relative links are links_resolve's job; we own the /-rooted ones
+            candidates = _rooted_candidates(root_dir, t)
+            if candidates and not any(scope.exists(c) for c in candidates):
+                violations.append(f"{f} — dead link {t} → no page at {' or '.join(candidates)}")
+    return violations

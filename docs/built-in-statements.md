@@ -47,6 +47,10 @@ rarely write `[x]`.
 These suit a wiki or any cross-linked markdown:
 
 - **`links_resolve`** — every relative internal link points at a real file.
+- **`rooted_links_resolve`** — root-absolute internal links (`/x/y`) resolve to a real page
+  under a site root you name (e.g. `./docs/content`). The counterpart to `links_resolve`
+  for VitePress/Docusaurus-style sites that link from the site root rather than relatively;
+  `/a/b` maps to `a/b.md` or `a/b/index.md`, anchors and asset links are skipped.
 - **`links_are_relative`** — internal links are relative, not absolute paths.
 - **`min_outbound_links`** — each page links out to at least N other pages.
 - **`referenced_in`** — every page in scope is linked from an index file (`index.md`).
