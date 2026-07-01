@@ -25,6 +25,10 @@ def render_digest(contract: Contract) -> str:
         "that is the only sanctioned escape. Run `henxels explain <path>` before creating",
         "a file to see what governs that spot.",
         "",
+        "Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks that "
+        "run this contract, the safety mechanism meant to protect the repository. Prefer "
+        "`henxels bless <action>` or editing `henxels.yaml` — both keep the deviation visible.",
+        "",
     ]
     if contract.settings.get("ask_me_before_staging"):
         # Git can't be hooked before `git add`, so this lives or dies on being read.

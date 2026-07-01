@@ -24,6 +24,7 @@ def test_render_digest():
     assert "henxels catalogue" in d
     assert "contribute" in d
     assert "↳ Holds work that ships this cycle." in d  # why: rides into the digest
+    assert "--no-verify" in d  # emergency-only escape hatch, called out for agents
 
 
 def test_update_block_appends_and_replaces():

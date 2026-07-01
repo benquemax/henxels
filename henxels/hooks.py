@@ -19,7 +19,10 @@ def _script(subcommand: str) -> str:
     # Resolve henxels, preferring THIS project's environment over a global install — so
     # the hook runs the version the project pins (and its extras, e.g. pymarkdownlnt for
     # markdown_lint), not whatever happens to be on PATH. Order: activated venv, ./.venv,
-    # ./venv, a global `henxels`, `uv run`, then a plain python module.
+    # ./venv, a global `henxels`, `uv run` (project), `uv tool run` (isolated tool install
+    # that may be off the hook's PATH, even in a non-Python repo), then a python module —
+    # but only if henxels actually imports there. If nothing can run it, teach instead of
+    # dying with a bare `No module named henxels`.
     return (
         "#!/bin/sh\n"
         f"{HENXELS_MARKER}\n"
@@ -35,10 +38,18 @@ def _script(subcommand: str) -> str:
         '  H="henxels"\n'
         "elif command -v uv >/dev/null 2>&1 && [ -f pyproject.toml ]; then\n"
         '  H="uv run henxels"\n'
-        "elif command -v python3 >/dev/null 2>&1; then\n"
+        "elif command -v uv >/dev/null 2>&1; then\n"
+        '  H="uv tool run henxels"\n'
+        "elif command -v python3 >/dev/null 2>&1 && python3 -c 'import henxels' 2>/dev/null; then\n"
         '  H="python3 -m henxels"\n'
-        "else\n"
+        "elif command -v python >/dev/null 2>&1 && python -c 'import henxels' 2>/dev/null; then\n"
         '  H="python -m henxels"\n'
+        "else\n"
+        '  echo "henxels: could not find the henxels command in this environment." >&2\n'
+        '  echo "  Install it (e.g. \'uv tool install henxels\' or \'pip install henxels\')," >&2\n'
+        '  echo "  or run \'henxels init\' from an env where henxels is on PATH." >&2\n'
+        '  echo "  To bypass the contract for this one commit: git commit --no-verify." >&2\n'
+        "  exit 1\n"
         "fi\n"
         f'HENXELS_CMD="$H" exec $H {subcommand} "$@"\n'
     )

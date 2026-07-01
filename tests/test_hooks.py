@@ -50,3 +50,25 @@ def test_hook_prefers_project_venv_over_global(git_repo):
     # the project's own env is checked before a global `henxels` on PATH
     assert "$VIRTUAL_ENV/bin/henxels" in script
     assert script.index(".venv/bin/henxels") < script.index("command -v henxels")
+
+
+def test_hook_falls_back_to_uv_tool_run(git_repo):
+    # A `uv tool install henxels` lives in an isolated env off the hook's PATH, and the
+    # target repo may not be a Python project (no pyproject.toml → `uv run` is skipped).
+    # `uv tool run henxels` reaches the isolated install anyway, before the python fallback.
+    install_hooks(git_repo)
+    script = (git_repo / ".git" / "hooks" / "pre-commit").read_text()
+    assert "uv tool run henxels" in script
+    assert script.index("uv run henxels") < script.index("uv tool run henxels")
+    assert script.index("uv tool run henxels") < script.index("python3 -m henxels")
+
+
+def test_hook_python_fallback_is_guarded_and_errors_actionably(git_repo):
+    # The python `-m` fallback must only be taken when henxels actually imports there —
+    # otherwise the hook fails with a bare `No module named henxels`. When nothing can run
+    # henxels, teach the user instead of crashing opaquely.
+    install_hooks(git_repo)
+    script = (git_repo / ".git" / "hooks" / "pre-commit").read_text()
+    assert "import henxels" in script  # guard the python fallback
+    assert "could not find" in script.lower()  # actionable final message
+    assert "--no-verify" in script  # tell them how to bypass this one commit

@@ -24,6 +24,15 @@ teaching git hooks, and drops a contract digest into `AGENTS.md`.
 > core.hooksPath`), or call `henxels _precommit` / `henxels _prepush` from your existing
 > hooks.
 
+A related gotcha is when git *finds* the hook but the hook can't find henxels:
+
+> **Hook fails with `No module named henxels`?** The hook found a python but not henxels
+> in it — common when henxels is an isolated `uv tool install` whose bin dir isn't on the
+> hook's `PATH`, in a repo that isn't a Python project. Recent versions fall back to `uv
+> tool run henxels` and, failing everything, print how to fix it instead of that opaque
+> error. If you're on an older version, `henxels init` from an env where `henxels` is on
+> `PATH` (or `uv tool install henxels`) rewrites the hook.
+
 ## Tailor the contract
 
 Open `henxels.yaml` and shape the rule list to your repo. Each henxel is a sentence plus
