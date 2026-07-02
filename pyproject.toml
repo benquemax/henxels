@@ -53,6 +53,9 @@ henxels = ["schema/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "e2e: end-to-end journeys driving the real henxels binary in a sandbox (deselect with -m 'not e2e')",
+]
 
 [tool.ruff]
 line-length = 110

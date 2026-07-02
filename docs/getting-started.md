@@ -67,5 +67,8 @@ henxels check --all          # run every henxel
 henxels explain src/foo.py   # what governs this spot, in plain words
 ```
 
+Both work from any subdirectory of the repo — henxels finds the contract upward, the
+way git finds `.git`.
+
 To disobey a rule, change `henxels.yaml`. That is the only sanctioned escape — which
 makes every deviation deliberate and visible in the diff.

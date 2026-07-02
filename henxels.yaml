@@ -48,10 +48,13 @@ henxels:
     run_before_commit: "uv run ruff check ."
 
   - henxel: "The test suite passes before every commit"
-    run_before_commit: "uv run pytest -q"
+    run_before_commit: "uv run pytest -q -m 'not e2e'"   # fast tier; journeys gate the push
 
   - henxel: "The contract holds before every push"
     run_before_push: "uv run henxels check --all"
+
+  - henxel: "The end-to-end journeys pass before every push"
+    run_before_push: "uv run pytest -q -m e2e"
 
   - henxel: "Behaviour changes update the docs"
     changed_with:                  # a commit-time reminder; only fires when relevant

@@ -32,11 +32,20 @@ class ContractError(Exception):
 
 
 def find_contract(start: Path | str = ".") -> Path | None:
-    start = Path(start)
-    for name in DEFAULT_FILENAMES:
-        candidate = start / name
-        if candidate.is_file():
-            return candidate
+    """The contract at ``start`` or the nearest ancestor — like git finds .git.
+
+    Stops at the repo boundary (a directory containing ``.git``) so a contract
+    lying *outside* the repo can never govern it by accident; without a repo,
+    walks to the filesystem root.
+    """
+    current = Path(start).resolve()
+    for directory in (current, *current.parents):
+        for name in DEFAULT_FILENAMES:
+            candidate = directory / name
+            if candidate.is_file():
+                return candidate
+        if (directory / ".git").exists():
+            return None  # repo boundary reached without a contract
     return None
 
 

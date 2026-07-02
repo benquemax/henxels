@@ -116,12 +116,20 @@ def _load(root: Path, config_path: str | None = None) -> Contract:
     path = Path(config_path) if config_path else find_contract(root)
     if path is None:
         raise ContractError(
-            "No contract found. Looked for henxels.yaml at the repo root.\n"
+            "No contract found. Looked for henxels.yaml here and up to the repo root.\n"
             "  Run `henxels init` to create one."
         )
     contract = load_contract(path)
-    apply_imports(contract, root=root)
+    apply_imports(contract, root=path.parent)
     return contract
+
+
+def _load_rooted(config_path: str | None = None) -> tuple[Contract, Path]:
+    """Load the contract from cwd or the nearest ancestor; root is where it lives —
+    so every command works from any subdirectory, the way git does."""
+    contract = _load(Path.cwd(), config_path)
+    root = contract.path.parent if contract.path else Path.cwd()
+    return contract, root
 
 
 def _notify_update() -> None:
@@ -150,9 +158,8 @@ def _emit(findings: list[Finding], plain: bool = False) -> int:
 # --- commands ------------------------------------------------------------
 
 def cmd_check(args) -> int:
-    root = Path.cwd()
     try:
-        contract = _load(root, args.config)
+        contract, root = _load_rooted(args.config)
     except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
@@ -202,12 +209,12 @@ def cmd_check(args) -> int:
 
 
 def cmd_explain(args) -> int:
-    root = Path.cwd()
     try:
-        contract = _load(root, args.config)
+        contract, root = _load_rooted(args.config)
     except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
+    args.path = _rel(args.path, root)  # asked from a subdirectory, answered repo-relative
     if args.json:
         import json
 
@@ -444,9 +451,8 @@ def cmd_integrate(args) -> int:
 def cmd_sync(args) -> int:
     from henxels.digest import sync_file
 
-    root = Path.cwd()
     try:
-        contract = _load(root, args.config)
+        contract, root = _load_rooted(args.config)
     except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
@@ -459,7 +465,12 @@ def cmd_bless(args) -> int:
     from henxels import bless as bless_mod
     from henxels.guard import collect_deletions
 
-    root = Path.cwd()
+    # The hook consumes the token at the contract root — bless must write it there,
+    # even when invoked from a subdirectory.
+    try:
+        _, root = _load_rooted()
+    except ContractError:
+        root = Path.cwd()
     if not gitinfo.is_git_repo(root):
         print("Not a git repo — nothing to bless here.", file=sys.stderr)
         return 2

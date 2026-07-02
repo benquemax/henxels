@@ -34,9 +34,14 @@ every decision here.
 
 ```bash
 uv venv && uv pip install -e ".[dev]"
-uv run pytest            # run the suite
-uv run henxels check     # dogfood the contract on this repo
+uv run pytest -m 'not e2e'   # fast unit tier (gates commits)
+uv run pytest -m e2e         # end-to-end journeys: real binary + real git (gate pushes)
+uv run henxels check         # dogfood the contract on this repo
 ```
+
+E2E journeys live in `tests/e2e/` and drive henxels as a subprocess inside a hermetic
+sandbox (`tests/e2e/harness.py`) — they never import henxels. Set `HENXELS_E2E_COMMAND`
+to aim them at another artifact (an installed wheel, the npm shim).
 
 ## Mental model
 
@@ -111,6 +116,7 @@ Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks 
 - Code is clean and conventional (ruff) before every commit
 - The test suite passes before every commit
 - The contract holds before every push
+- The end-to-end journeys pass before every push
 - Behaviour changes update the docs _(warn)_
 
 ### Behaviours

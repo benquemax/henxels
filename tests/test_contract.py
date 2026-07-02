@@ -122,3 +122,38 @@ def test_auto_discovered_local_checks(tmp_path):
     c = load_contract(p)
     apply_imports(c, root=tmp_path)  # no imports: needed
     assert get_statement("auto_demo") is not None
+
+
+# --- find_contract walks up (like git) -------------------------------------
+
+def test_find_contract_walks_up_to_the_repo_root(tmp_path):
+    from henxels.contract import find_contract
+
+    (tmp_path / "henxels.yaml").write_text("henxels: []\n", encoding="utf-8")
+    sub = tmp_path / "src" / "deep"
+    sub.mkdir(parents=True)
+    found = find_contract(sub)
+    assert found is not None and found.resolve() == (tmp_path / "henxels.yaml").resolve()
+
+
+def test_find_contract_nearest_wins(tmp_path):
+    from henxels.contract import find_contract
+
+    (tmp_path / "henxels.yaml").write_text("henxels: []\n", encoding="utf-8")
+    sub = tmp_path / "pkg"
+    sub.mkdir()
+    (sub / "henxels.yaml").write_text("henxels: []\n", encoding="utf-8")
+    found = find_contract(sub / ".")
+    assert found is not None and found.resolve() == (sub / "henxels.yaml").resolve()
+
+
+def test_find_contract_stops_at_the_git_boundary(tmp_path):
+    from henxels.contract import find_contract
+
+    # A contract OUTSIDE the repo must never govern the repo by accident.
+    (tmp_path / "henxels.yaml").write_text("henxels: []\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    inner = repo / "src"
+    inner.mkdir()
+    assert find_contract(inner) is None
