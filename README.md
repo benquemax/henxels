@@ -23,6 +23,11 @@ the right thing in the wrong place. It puts the expected structure **in front of
 agent** (in `AGENTS.md` and on demand) and makes breaking it **impossible by accident**:
 to disobey a henxel you must change the contract — a conscious, reviewable act.
 
+The flagship recipe is the **LLM wiki**: a markdown knowledge base that agents read and
+write, kept true to Google's Open Knowledge Format
+([OKF example below](#example-an-okf-open-knowledge-format-contract-for-your-llm-wiki)).
+But any repo a model touches — code, docs, data — can be put in henxels.
+
 Under the hood henxels is **a framework + a growing community library of checks**:
 the contract just lists which checks apply where; the checks are functions, and you can
 add your own in three lines.

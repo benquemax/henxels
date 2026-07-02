@@ -15,7 +15,12 @@
     "ai",
     "lint",
     "guardrails",
-    "pre-commit"
+    "pre-commit",
+    "llm-wiki",
+    "okf",
+    "open-knowledge-format",
+    "knowledge-base",
+    "agents-md"
   ],
   "license": "MIT",
   "bin": {
