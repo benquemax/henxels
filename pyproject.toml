@@ -55,6 +55,7 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "e2e: end-to-end journeys driving the real henxels binary in a sandbox (deselect with -m 'not e2e')",
+    "packaging: E2E against distributed artifacts (real downloads/installs; network required)",
 ]
 
 [tool.ruff]

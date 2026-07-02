@@ -1,7 +1,7 @@
 {
   "name": "henxels",
   "version": "0.7.0",
-  "description": "A repo-level harness for coding agents — file-level constraints that keep every agent true to your repo's structure. Node-friendly launcher for the Python engine.",
+  "description": "A repo-level harness for coding agents — file-level constraints that keep every agent true to your repo's structure. No Python required: the launcher bootstraps its own engine (official uv, checksum-pinned) on first run.",
   "scripts": {
     "prepack": "node -e \"require('fs').copyFileSync('../README.md','README.md')\""
   },
@@ -28,10 +28,12 @@
   },
   "files": [
     "bin/henxels.js",
+    "bin/bootstrap.cjs",
+    "uv-manifest.json",
     "README.md"
   ],
   "engines": {
-    "node": ">=14"
+    "node": ">=18.17"
   },
   "preferGlobal": true,
   "repository": {

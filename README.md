@@ -88,7 +88,8 @@ Henxels can be installed by your agent or by you manually.
 Paste this to your coding agent:
 
 > Install henxels (`uv tool install henxels`, or `pipx install henxels`, or
-> `npm i -g henxels` — it shims to Python; install a prerequisite if one's missing).
+> `npm i -g henxels` — no Python needed; the launcher bootstraps its own engine on
+> first run).
 > Run `henxels init`, then tailor `henxels.yaml` to this repo's folders (run
 > `henxels catalogue` to see the statements), and finish with `henxels sync` and
 > `henxels check --all`. Before writing any custom check, run `henxels catalogue` and use
@@ -112,6 +113,12 @@ git add henxels.yaml AGENTS.md .henxels/   # commit your contract (see note belo
 Building an **LLM wiki**? `henxels init --template okf-llm-wiki` sets up an
 [Open Knowledge Format](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md)
 wiki instead — seeded from scratch or governing the one you already have.
+
+**Pure JS repo, allergic to Python?** `npm i -g henxels` is all you need. On first run
+the launcher fetches the official [uv](https://docs.astral.sh/uv/) binary
+(checksum-pinned), uv provisions Python by itself, and the engine version always
+matches the npm package version. One-time download, cached; every machine after that
+is just `henxels init`.
 
 > **Commit `.henxels/`, don't gitignore it.** It holds the JSON schema your editor uses
 > for autocomplete (your `henxels.yaml` points at it) and any custom checks you add — and

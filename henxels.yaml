@@ -54,7 +54,7 @@ henxels:
     run_before_push: "uv run henxels check --all"
 
   - henxel: "The end-to-end journeys pass before every push"
-    run_before_push: "uv run pytest -q -m e2e"
+    run_before_push: 'uv run pytest -q -m "e2e and not packaging"'   # packaging = network/downloads; CI + release territory
 
   - henxel: "Behaviour changes update the docs"
     changed_with:                  # a commit-time reminder; only fires when relevant

@@ -12,7 +12,13 @@ belong — and keeps agents and humans inside it.
 
 ```bash
 uvx henxels init        # zero-install via uv (or: pipx install henxels)
+npm i -g henxels        # JS repos: no Python required — see below
 ```
+
+The npm package needs no Python on the machine: on first run its launcher downloads
+the official uv binary (verified against a pinned checksum), uv provisions a managed
+Python, and henxels runs at exactly the npm package's version. Everything is cached
+after the first run.
 
 `henxels init` detects your stack, writes a commented `henxels.yaml`, installs the
 teaching git hooks, and drops a contract digest into `AGENTS.md`.

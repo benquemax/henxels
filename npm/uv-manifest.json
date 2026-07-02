@@ -1,0 +1,41 @@
+{
+  "version": "0.11.26",
+  "assets": {
+    "linux-x64-gnu": {
+      "asset": "uv-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "6426a73c3837e6e2483ee344cbc00f36394d179afcba6183cb77437e67db4af0"
+    },
+    "linux-arm64-gnu": {
+      "asset": "uv-aarch64-unknown-linux-gnu.tar.gz",
+      "sha256": "befa1a59c91e96eb601b0fd9a97c03dd666f17baba644b2b4db9c59a767e387e"
+    },
+    "linux-x64-musl": {
+      "asset": "uv-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "62bf1a53501adf4083224b69b33737450ac516935f5a5e483e9dfaf2665084de"
+    },
+    "linux-arm64-musl": {
+      "asset": "uv-aarch64-unknown-linux-musl.tar.gz",
+      "sha256": "47418cfdb34b1ca42e503da72631ac8c475602e2411ac6c39aa84c2373fe6324"
+    },
+    "darwin-x64": {
+      "asset": "uv-x86_64-apple-darwin.tar.gz",
+      "sha256": "922b460202707dd5f4ccacbadbe7f6a546cc46e82a99bf50ca99a7977a78eddd"
+    },
+    "darwin-arm64": {
+      "asset": "uv-aarch64-apple-darwin.tar.gz",
+      "sha256": "8f7fbf1708399b921857bce71e1d60f0d3ccf52a30caebc1c1a2f175dce13ab6"
+    },
+    "win32-x64": {
+      "asset": "uv-x86_64-pc-windows-msvc.zip",
+      "sha256": "4e1278ede866be6c0bf32d2f466cc6de7a9fb399ecf20c9ce2d186e52424be47"
+    },
+    "win32-arm64": {
+      "asset": "uv-aarch64-pc-windows-msvc.zip",
+      "sha256": "98246149741f558e25e45ecf2b0b20f34de0634269f2bf0dcb4012d4b6ba289a"
+    },
+    "win32-ia32": {
+      "asset": "uv-i686-pc-windows-msvc.zip",
+      "sha256": "6e19e7ef0ccacfeea7edeb0a7be951d31148b49f5170c1770c58db312fe443f8"
+    }
+  }
+}
