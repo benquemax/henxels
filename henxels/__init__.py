@@ -10,8 +10,16 @@ Custom checks register with the ``@statement`` decorator:
                 if scope.line_count(f) > limit]
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _package_version
+
 from henxels.statements import Scope, as_list, statement
 
-__version__ = "0.2.0"
+try:
+    # Single source of truth: pyproject.toml. A hand-maintained literal here sat
+    # at 0.2.0 while the package shipped 0.7.0 — never again.
+    __version__ = _package_version("henxels")
+except PackageNotFoundError:  # a checkout used without being installed
+    __version__ = "0.0.0.dev0"
 
 __all__ = ["statement", "Scope", "as_list", "__version__"]

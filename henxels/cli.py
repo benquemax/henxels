@@ -41,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
         prog="henxels",
         description="Suspenders for your repo. Keep your ADHD agent in henxels.",
     )
+    from henxels import __version__
+
+    parser.add_argument("--version", action="version", version=f"henxels v{__version__}")
     sub = parser.add_subparsers(dest="command")
 
     pi = sub.add_parser("init", help="scaffold the contract, hooks, and AGENTS.md digest")

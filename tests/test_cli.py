@@ -82,3 +82,15 @@ def test_check_no_contract(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     assert main(["check", "--all"]) == 2
     assert "No contract found" in capsys.readouterr().err
+
+
+def test_version_flag(capsys):
+    import pytest as _pytest
+
+    from henxels import __version__
+    from henxels.cli import main
+
+    with _pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert __version__ in capsys.readouterr().out
