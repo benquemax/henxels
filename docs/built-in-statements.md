@@ -28,9 +28,16 @@ rarely write `[x]`.
 ## Content and frontmatter
 
 - **`required_frontmatter`** — markdown files declare these frontmatter keys (a list is
-  *all*). Checks presence, not value.
+  *all*). A key with an empty value (`type:`, `type: ""`, `tags: []`) counts as missing —
+  declaring means saying something.
+- **`no_frontmatter`** — markdown files here carry **no** YAML frontmatter block. The
+  inverse of `required_frontmatter`, for files a format keeps frontmatter-free — such as
+  the reserved `index.md`/`log.md` of the
+  [Open Knowledge Format (OKF)](enforcing-okf.md).
 - **`frontmatter_dates`** — the named frontmatter fields are valid ISO dates
-  (`YYYY-MM-DD`).
+  (`YYYY-MM-DD`). The dict form names a kind per field: `{timestamp: datetime}` accepts a
+  full ISO 8601 datetime (a bare date passes too, as day precision), while
+  `{created: date}` stays date-only.
 - **`frontmatter_values`** — fields hold values from an allowed set. A scalar field must be
   in the set; a list field must be a subset of it. One statement covers an enum (`type`)
   and a taxonomy (`tags`).

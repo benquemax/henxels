@@ -20,6 +20,8 @@ keep agents and humans true to your repo's structure. These guides go deeper tha
 - [Settings](settings.md) — behaviours: staging, push, delete, similarity, large files.
 - [Guards and bless](guards-and-bless.md) — how the push and delete protections work.
 - [Agent integrations](agent-integrations.md) — the `AGENTS.md` digest and harness hooks.
+- [Enforcing OKF](enforcing-okf.md) — a worked contract for the Open Knowledge Format:
+  keep an agent-maintained wiki conformant.
 - [Upgrading](upgrading.md) — the version nag, refreshing local files, schema evolution.
 
 ## The shape of it

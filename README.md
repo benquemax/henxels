@@ -201,45 +201,75 @@ The README is the tour; the deeper guides live in
 - [Settings](https://github.com/benquemax/henxels/blob/main/docs/settings.md) — behaviours (staging, push, delete, similarity, large files).
 - [Guards and bless](https://github.com/benquemax/henxels/blob/main/docs/guards-and-bless.md) — how the protections work.
 - [Agent integrations](https://github.com/benquemax/henxels/blob/main/docs/agent-integrations.md) — the AGENTS.md digest and harness hooks.
+- [Enforcing OKF](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md) — a worked contract for the Open Knowledge Format.
 - [Upgrading](https://github.com/benquemax/henxels/blob/main/docs/upgrading.md) — the version nag, refreshing local files, schema evolution.
 
 ---
 
-## Example: keeping an LLM wiki from scattering
+## Example: an OKF (Open Knowledge Format) contract for your LLM wiki
 
 An **LLM wiki** — a markdown knowledge base an agent reads and writes (the pattern
-popularized by Andrej Karpathy) — is a perfect henxels use case. The idea is great, but
-small models drift hard: they write against the conventions, and knowledge that belongs
-in **one** page ends up **scattered across several near-duplicate files**. henxels gives
-the wiki a structure the agent has to follow, and warns it the moment it's about to
-fragment a topic.
+popularized by Andrej Karpathy) — is a perfect henxels use case. Google's
+[Open Knowledge Format (OKF) spec](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+formalizes the pattern: **concept documents** with a `type` in their frontmatter,
+cross-links as the edges of a knowledge graph, and reserved `index.md`/`log.md` files.
+OKF makes *consumers* tolerate almost anything, so the whole quality bar sits with
+whoever writes the bundle — and small models drift hard against that bar: they write
+against the conventions, and knowledge that belongs in **one** page ends up **scattered
+across several near-duplicate files**. henxels turns the OKF conventions into a contract
+the agent has to follow, and warns it the moment it's about to fragment a topic.
 
 ```yaml
 settings:
-  confirm_before_deleting: { over_lines: 10 }    # don't lose knowledge to a diff slip
-  warn_about_similar_files:                        # the anti-scatter henxel: nudges the
-    above: 0.82                                    # agent to UPDATE a page, not clone it
-    ignore: ["**/index.md"]
+  confirm_before_deleting: { over_lines: 10 }   # don't lose knowledge to a diff slip
+  warn_about_similar_files:                     # the anti-scatter henxel: nudges the
+    above: 0.82                                 # agent to UPDATE a page, not clone it
+    ignore: ["**/index.md", "**/log.md"]
 
 henxels:
-  - henxel: "Every wiki page is kebab-case markdown with findable metadata"
-    in: ./pages/*
+  - henxel: "Every concept doc is kebab-case markdown with OKF frontmatter (type is the one MUST)"
+    in: ./wiki/*
+    except: ["**/index.md", "**/log.md"]        # OKF's reserved files carry no frontmatter
+    allowed_filetypes: .md
     filename_casing: kebab-case
-    allowed_filetypes: [.md]
-    required_frontmatter: [title, tags, updated]
-  - henxel: "Pages are clean markdown with no dead links"
-    in: ./pages/*
-    markdown_lint: true
-    links_resolve: true          # a custom check (see "Custom checks" above)
-  - henxel: "The wiki has a single index"
-    in: ./pages
+    required_frontmatter: [type, title, description]
+    frontmatter_values:
+      type: [BigQuery Table, API Endpoint, Metric, Playbook]
+
+  - henxel: "timestamp is a real ISO 8601 datetime and is bumped when a doc changes"
+    in: ./wiki/*
+    except: ["**/index.md", "**/log.md"]
+    frontmatter_dates: { timestamp: datetime }
+    bump_updated_on_change: timestamp
+
+  - henxel: "Every link lands — bundle-absolute (/tables/customers.md) and relative alike"
+    in: ./wiki/*
+    rooted_links_resolve: ./wiki
+    links_resolve: true
+
+  - henxel: "OKF reserved files stay frontmatter-free (the bundle root may declare okf_version)"
+    in: ["./wiki/**/index.md", "./wiki/**/log.md"]
+    except: ./wiki/index.md
+    no_frontmatter: true
+
+  - henxel: "The bundle root has an index and every top-level concept is listed in it"
+    in: ./wiki
+    except: "**/log.md"
     required_files: index.md
+    referenced_in: wiki/index.md
 ```
 
-Because the contract is mirrored into `AGENTS.md`, the agent reads *"one page per topic,
-kebab-case, with these fields"* **before** it writes — and `warn_about_similar_files`
-catches it when it's about to create the fifth slightly-different page about the same
-thing. Strong guidance is exactly what small LLMs need to stay tidy.
+Because the contract is mirrored into `AGENTS.md`, the agent reads *"one page per
+concept, kebab-case, `type` from this list"* **before** it writes — and
+`warn_about_similar_files` catches it when it's about to create the fifth
+slightly-different page about the same concept. Strong guidance is exactly what small
+LLMs need to stay tidy.
+
+The full walk-through —
+[Enforcing OKF (Open Knowledge Format)](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md)
+— maps every henxel to the spec's conformance rules and adds the graph-connectivity
+rule, the `references/` carve-out for citation targets, and a ten-line custom check for
+`log.md`'s date sections.
 
 ---
 

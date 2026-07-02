@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from henxels.statements.builtins._helpers import parse_frontmatter, split_frontmatter
+from henxels.statements.builtins._helpers import has_frontmatter, parse_frontmatter, split_frontmatter
 from henxels.statements.registry import as_list, statement
 
 # [text](target) and ![alt](target) — capture the link/image target.
@@ -18,7 +18,11 @@ _MD_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-@statement("required_frontmatter", help="markdown files declare these frontmatter keys (list = all)", builtin=True)
+@statement(
+    "required_frontmatter",
+    help="markdown files declare these frontmatter keys with a non-empty value (list = all)",
+    builtin=True,
+)
 def required_frontmatter(param, scope):
     keys = as_list(param)
     violations = []
@@ -29,26 +33,46 @@ def required_frontmatter(param, scope):
         for key in keys:
             if key not in meta:
                 violations.append(f"{f} — add frontmatter key '{key}'")
+            elif _is_empty(meta[key]):
+                violations.append(f"{f} — frontmatter key '{key}' is empty; give it a value")
     return violations
+
+
+def _is_empty(value) -> bool:
+    # None, blank strings, and empty collections don't *declare* anything;
+    # falsy values like ``false`` and ``0`` do.
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, dict)):
+        return len(value) == 0
+    return False
 
 
 @statement(
     "frontmatter_dates",
-    help="named frontmatter fields are valid ISO dates (YYYY-MM-DD)",
+    help="named frontmatter fields are valid ISO dates (YYYY-MM-DD); dict form {field: datetime} allows ISO 8601 datetimes",
     builtin=True,
 )
 def frontmatter_dates(param, scope):
-    fields = as_list(param)
+    # scalar/list = date-only fields; dict = per-field kind ("date" | "datetime")
+    expectations = param if isinstance(param, dict) else dict.fromkeys(as_list(param), "date")
+    for name, kind in expectations.items():
+        if kind not in ("date", "datetime"):
+            raise ValueError(f"'{name}: {kind}' — the kind must be 'date' or 'datetime'")
     violations = []
     for f in scope.files:
         if not f.endswith(".md"):
             continue
         meta = parse_frontmatter(scope.read_text(f))
-        for name in fields:
+        for name, kind in expectations.items():
             if name not in meta:
                 continue  # presence is required_frontmatter's job
-            if not _is_iso_date(meta[name]):
+            if kind == "date" and not _is_iso_date(meta[name]):
                 violations.append(f"{f} — frontmatter '{name}' must be an ISO date (YYYY-MM-DD): {meta[name]!r}")
+            elif kind == "datetime" and not _is_iso_datetime(meta[name]):
+                violations.append(f"{f} — frontmatter '{name}' must be an ISO 8601 datetime: {meta[name]!r}")
     return violations
 
 
@@ -111,6 +135,36 @@ def _is_iso_date(value) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _is_iso_datetime(value) -> bool:
+    # Anything YAML already parsed to a date/datetime is valid by construction; a bare
+    # date passes too — it's an ISO 8601 instant at day precision.
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return True
+    if not isinstance(value, str):
+        return False
+    try:
+        # Python 3.10's fromisoformat predates the trailing-Z form.
+        datetime.datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        return True
+    except ValueError:
+        return False
+
+
+@statement(
+    "no_frontmatter",
+    help="markdown files here carry no YAML frontmatter block (e.g. OKF's reserved index.md/log.md)",
+    builtin=True,
+)
+def no_frontmatter(scope):
+    violations = []
+    for f in scope.files:
+        if not f.endswith(".md"):
+            continue
+        if has_frontmatter(scope.read_text(f)):
+            violations.append(f"{f} — remove the frontmatter block; files here must not carry one")
+    return violations
 
 
 @statement("markdown_lint", help="markdown files pass pymarkdownlnt (pip install pymarkdownlnt)", builtin=True)

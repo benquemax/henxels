@@ -27,13 +27,20 @@ def parse_frontmatter(text: str | None) -> dict:
     return split_frontmatter(text)[0]
 
 
+def has_frontmatter(text: str | None) -> bool:
+    """Whether the text opens with a ``---`` frontmatter block (parseable or not)."""
+    if not text or not text.startswith("---"):
+        return False
+    return _frontmatter_end(text.splitlines()) is not None
+
+
 def split_frontmatter(text: str | None) -> tuple[dict, str]:
     """Split text into (frontmatter dict, body). ``body`` is everything after the
     closing ``---`` line, with exact bytes preserved (so it can be hashed)."""
     if not text or not text.startswith("---"):
         return {}, text or ""
     lines = text.splitlines(keepends=True)
-    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    end = _frontmatter_end(lines)
     if end is None:
         return {}, text
     try:
@@ -42,3 +49,8 @@ def split_frontmatter(text: str | None) -> tuple[dict, str]:
         data = None
     meta = data if isinstance(data, dict) else {}
     return meta, "".join(lines[end + 1 :])
+
+
+def _frontmatter_end(lines) -> int | None:
+    """Index of the closing ``---`` line of a leading block, or None if unclosed."""
+    return next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)

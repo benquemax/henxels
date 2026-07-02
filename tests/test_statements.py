@@ -1,5 +1,7 @@
 """Built-in statement vocabulary + scalar-or-list / OR / AND / none-of semantics."""
 
+import pytest
+
 from henxels.statements.registry import get_statement
 from henxels.statements.scope import build_scope
 
@@ -85,6 +87,27 @@ def test_frontmatter_missing(tmp_path):
     assert run("required_frontmatter", ["title", "summary"], s)
 
 
+def test_frontmatter_null_value_counts_as_missing(tmp_path):
+    # OKF conformance: `type` must be non-empty, so a bare `type:` doesn't declare it
+    s = scope_for(tmp_path, {"d.md": "---\ntype:\ntitle: t\n---\n"})
+    assert run("required_frontmatter", ["type", "title"], s)
+
+
+def test_frontmatter_blank_string_counts_as_missing(tmp_path):
+    s = scope_for(tmp_path, {"d.md": '---\ntype: ""\n---\n'})
+    assert run("required_frontmatter", "type", s)
+
+
+def test_frontmatter_empty_list_counts_as_missing(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntags: []\n---\n"})
+    assert run("required_frontmatter", "tags", s)
+
+
+def test_frontmatter_false_is_a_value_not_empty(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ndraft: false\ncount: 0\n---\n"})
+    assert run("required_frontmatter", ["draft", "count"], s) == []
+
+
 # --- frontmatter_dates (ISO YYYY-MM-DD) ----------------------------------
 
 def test_frontmatter_dates_quoted_valid(tmp_path):
@@ -110,6 +133,44 @@ def test_frontmatter_dates_impossible_calendar(tmp_path):
 def test_frontmatter_dates_absent_is_silent(tmp_path):
     s = scope_for(tmp_path, {"d.md": "---\ntitle: t\n---\n"})  # required_frontmatter owns presence
     assert run("frontmatter_dates", "created", s) == []
+
+
+def test_frontmatter_dates_scalar_rejects_datetime(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ncreated: 2026-05-22T10:00:00Z\n---\n"})
+    assert run("frontmatter_dates", "created", s)
+
+
+def test_frontmatter_dates_datetime_kind_accepts_unquoted(tmp_path):
+    # OKF's `timestamp` is an ISO 8601 datetime; unquoted YAML parses it to a datetime object
+    s = scope_for(tmp_path, {"d.md": "---\ntimestamp: 2026-05-22T10:00:00Z\n---\n"})
+    assert run("frontmatter_dates", {"timestamp": "datetime"}, s) == []
+
+
+def test_frontmatter_dates_datetime_kind_accepts_quoted(tmp_path):
+    s = scope_for(tmp_path, {"d.md": '---\ntimestamp: "2026-05-22T10:00:00Z"\n---\n'})
+    assert run("frontmatter_dates", {"timestamp": "datetime"}, s) == []
+
+
+def test_frontmatter_dates_datetime_kind_accepts_date_precision(tmp_path):
+    # a bare date is a valid ISO 8601 instant at day precision
+    s = scope_for(tmp_path, {"d.md": "---\ntimestamp: 2026-05-22\n---\n"})
+    assert run("frontmatter_dates", {"timestamp": "datetime"}, s) == []
+
+
+def test_frontmatter_dates_datetime_kind_rejects_garbage(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntimestamp: yesterday at noon\n---\n"})
+    assert run("frontmatter_dates", {"timestamp": "datetime"}, s)
+
+
+def test_frontmatter_dates_dict_date_kind_stays_strict(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ncreated: 2026-05-22T10:00:00Z\n---\n"})
+    assert run("frontmatter_dates", {"created": "date"}, s)
+
+
+def test_frontmatter_dates_unknown_kind_is_loud(tmp_path):
+    s = scope_for(tmp_path, {"d.md": "---\ntimestamp: 2026-05-22\n---\n"})
+    with pytest.raises(ValueError):
+        run("frontmatter_dates", {"timestamp": "instant"}, s)
 
 
 # --- frontmatter_values (scalar ∈ set; list ⊆ set) -----------------------
@@ -148,6 +209,45 @@ def test_frontmatter_sha256_matches(tmp_path):
 def test_frontmatter_sha256_mismatch(tmp_path):
     s = scope_for(tmp_path, {"raw/a.md": "---\nsha256: deadbeef\n---\nThe body text.\n"})
     assert run("frontmatter_sha256_matches", "sha256", s)
+
+
+# --- no_frontmatter (e.g. OKF reserved files index.md / log.md) ------------
+
+def test_no_frontmatter_flags_block(tmp_path):
+    from henxels.statements.builtins.content import no_frontmatter
+
+    s = scope_for(tmp_path, {"index.md": "---\ntitle: t\n---\n# Index\n"})
+    assert no_frontmatter(s)
+
+
+def test_no_frontmatter_flags_unparseable_block(tmp_path):
+    from henxels.statements.builtins.content import no_frontmatter
+
+    # the block itself is the violation, even when the YAML inside is garbage
+    s = scope_for(tmp_path, {"index.md": "---\n: [broken\n---\n# Index\n"})
+    assert no_frontmatter(s)
+
+
+def test_no_frontmatter_clean_page_passes(tmp_path):
+    from henxels.statements.builtins.content import no_frontmatter
+
+    s = scope_for(tmp_path, {"index.md": "# Index\n\n* [a](a.md) - a concept\n"})
+    assert no_frontmatter(s) == []
+
+
+def test_no_frontmatter_unclosed_fence_is_not_a_block(tmp_path):
+    from henxels.statements.builtins.content import no_frontmatter
+
+    # an opening --- with no closing line is a horizontal rule, not frontmatter
+    s = scope_for(tmp_path, {"index.md": "---\n# not frontmatter\n"})
+    assert no_frontmatter(s) == []
+
+
+def test_no_frontmatter_skips_non_markdown(tmp_path):
+    from henxels.statements.builtins.content import no_frontmatter
+
+    s = scope_for(tmp_path, {"data.yaml": "---\nkey: value\n---\n"})
+    assert no_frontmatter(s) == []
 
 
 # --- links ---------------------------------------------------------------

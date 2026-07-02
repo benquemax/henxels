@@ -96,8 +96,15 @@
         },
         "allowed_filetypes": { "$ref": "#/$defs/scalarOrList", "description": "every file is one of these extensions/globs (list = OR)" },
         "filename_matches_regex": { "$ref": "#/$defs/scalarOrList" },
-        "required_frontmatter": { "$ref": "#/$defs/scalarOrList", "description": "markdown declares these keys (list = all)" },
-        "frontmatter_dates": { "$ref": "#/$defs/scalarOrList", "description": "these frontmatter fields are valid ISO dates (YYYY-MM-DD)" },
+        "required_frontmatter": { "$ref": "#/$defs/scalarOrList", "description": "markdown declares these keys with a non-empty value (list = all)" },
+        "no_frontmatter": { "type": "boolean", "description": "markdown files here carry no YAML frontmatter block (e.g. OKF's reserved index.md/log.md)" },
+        "frontmatter_dates": {
+          "description": "these frontmatter fields are valid ISO dates (YYYY-MM-DD); the dict form {field: datetime} allows full ISO 8601 datetimes",
+          "oneOf": [
+            { "$ref": "#/$defs/scalarOrList" },
+            { "type": "object", "additionalProperties": { "type": "string", "enum": ["date", "datetime"] } }
+          ]
+        },
         "frontmatter_values": {
           "type": "object",
           "description": "frontmatter fields hold values from an allowed set (scalar ∈ set; list ⊆ set)",
