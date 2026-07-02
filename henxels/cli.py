@@ -47,6 +47,11 @@ def main(argv: list[str] | None = None) -> int:
     pi.add_argument("--no-hooks", action="store_true")
     pi.add_argument("--no-digest", action="store_true")
     pi.add_argument("--force", action="store_true")
+    pi.add_argument("--template", choices=["okf-llm-wiki"], default=None,
+                    help="start from a use-case template (okf-llm-wiki: an Open Knowledge Format wiki)")
+    pi.add_argument("--wiki-dir", default=None,
+                    help="folder the okf-llm-wiki template governs (default: wiki/)")
+    pi.add_argument("--dry-run", action="store_true", help="show what init would do, write nothing")
     pi.set_defaults(func=cmd_init)
 
     pc = sub.add_parser("check", help="run the contract")
@@ -261,20 +266,68 @@ def cmd_contribute(args) -> int:
 
 def cmd_init(args) -> int:
     from henxels.engine.report import BANNER
-    from henxels.scaffold import init
+    from henxels.invocation import henxels_cmd
+    from henxels.scaffold import ScaffoldError, init
 
     root = Path.cwd()
+    hx = henxels_cmd()
     if is_fancy():
         print(BANNER)
         print()
 
-    report = init(root, install_git_hooks=not args.no_hooks, write_digest=not args.no_digest, force=args.force)
+    # On a TTY an ambiguous wiki location becomes a question; anywhere else it becomes
+    # an instructive error — same decision, two skins.
+    ask = _ask_wiki_dir if (args.template and not args.wiki_dir and _tty()) else None
+    try:
+        report = init(
+            root,
+            install_git_hooks=not args.no_hooks,
+            write_digest=not args.no_digest,
+            force=args.force,
+            template=args.template,
+            wiki_dir=args.wiki_dir,
+            dry_run=args.dry_run,
+            ask=ask,
+        )
+    except ScaffoldError as exc:
+        print(exc)
+        return 1
+
+    if report.get("dry_run"):
+        print("dry run — nothing written. init would:")
+        state, info = report["contract"]
+        if state == "planned":
+            print(f"  • create henxels.yaml for a {info} project")
+        else:
+            print("  • keep the existing henxels.yaml (use --force to replace)")
+        if report.get("wiki"):
+            mode, wiki = report["wiki"]
+            if mode == "scaffolded":
+                print(f"  • scaffold a fresh OKF wiki at {wiki}/ (index, starter concept, update log)")
+            else:
+                print(f"  • govern the existing wiki at {wiki}/ with rules starting at `level: warn`")
+        return 0
 
     state, info = report["contract"]
     if state == "created":
-        print(f"✓ henxels.yaml created for a {info} project")
+        suffix = f" + {report['template']} template" if report.get("template") else ""
+        print(f"✓ henxels.yaml created for a {info} project{suffix}")
     else:
         print("• henxels.yaml already exists — left as-is (use --force to replace)")
+        if report.get("fragment"):
+            print("    Paste the okf-llm-wiki henxels into it yourself (your rules stay yours):")
+            print(report["fragment"])
+
+    if report.get("wiki"):
+        mode, wiki = report["wiki"]
+        if mode == "scaffolded" and report.get("seeds"):
+            print(f"✓ wiki: scaffolded {wiki}/ (index, starter concept, update log)")
+        elif mode == "governing":
+            print(f"✓ wiki: governing existing {wiki}/ — wiki rules start at `level: warn`")
+    checks_file = report.get("checks_file")
+    if checks_file:
+        mark, verb = ("✓", "created") if checks_file[0] == "created" else ("•", "already exists — kept")
+        print(f"{mark} henxels_checks.py {verb} (the log_headings_are_dates check)")
     hooks = report.get("hooks")
     if hooks is None:
         print("• git hooks: skipped (not a git repo, or --no-hooks)")
@@ -293,9 +346,9 @@ def cmd_init(args) -> int:
         print(f"✓ {report['schema']} — editor autocomplete for henxels.yaml")
         print("    (install a YAML language-server extension, e.g. Red Hat YAML, to see it)")
 
-    from henxels.invocation import henxels_cmd
+    if report.get("wiki"):
+        _print_wiki_state(root, report, hx)
 
-    hx = henxels_cmd()
     print()
     print("Next:")
     print(f"  • Tailor the rules: edit henxels.yaml (browse `{hx} catalogue` for statements).")
@@ -309,6 +362,51 @@ def cmd_init(args) -> int:
     if hx != "henxels":
         print(f"  • Tip: `uv tool install henxels` (or pipx) puts `henxels` on your PATH so you can drop `{hx.rsplit(' ', 1)[0]} `.")
     return 0
+
+
+def _tty() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _ask_wiki_dir(candidates: list[tuple[str, int]]) -> str | None:
+    """TTY rendering of the wiki-location decision: a pick list instead of an error."""
+    from henxels.scaffold import DEFAULT_WIKI_DIR
+
+    print("Found existing markdown that might be your wiki:")
+    for i, (name, count) in enumerate(candidates, 1):
+        print(f"  [{i}] {name}/ ({count} markdown files) — govern it")
+    print(f"  [0] start a fresh wiki at {DEFAULT_WIKI_DIR}/")
+    raw = input("Which folder should the contract govern? [number or path] ").strip()
+    if raw == "0":
+        return DEFAULT_WIKI_DIR
+    if raw.isdigit() and 1 <= int(raw) <= len(candidates):
+        return candidates[int(raw) - 1][0]
+    return raw or None  # a typed path; empty falls through to the instructive error
+
+
+def _print_wiki_state(root: Path, report: dict, hx: str) -> None:
+    """After a template init, run the contract and report real numbers, not hopes."""
+    mode, wiki = report["wiki"]
+    try:
+        contract = _load(root)
+        findings = run_contract(contract, root)
+    except ContractError:
+        return  # contract kept as-is and unreadable → nothing truthful to report
+    print()
+    if not findings:
+        print("✓ contract holds — green at birth" if mode == "scaffolded" else "✓ contract already holds")
+        print(f"  → agent: write concepts in {wiki}/; `{hx} explain {wiki}` shows the rules.")
+    elif mode == "governing":
+        warns = sum(1 for f in findings if f.level == "warn")
+        blocks = len(findings) - warns
+        print(f"• {warns} henxel(s) not yet satisfied at `level: warn` — that's the migration plan,")
+        print("  not a failure. Nothing blocks until you promote the rules.")
+        if blocks:
+            print(f"⚠ {blocks} blocking henxel(s) also unsatisfied (from the project starter).")
+        print(f"  → agent: run `{hx} check --all`, fix the findings it lists, repeat until clean —")
+        print("    then delete the `level: warn` lines in henxels.yaml to enforce.")
+    else:
+        print(f"⚠ {len(findings)} henxel(s) not satisfied — run `{hx} check --all` for the list.")
 
 
 def cmd_doctor(args) -> int:

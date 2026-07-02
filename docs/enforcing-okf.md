@@ -18,6 +18,19 @@ description. The contract below makes the OKF v0.1 conventions impossible to bre
 accident* — and because the contract is mirrored into `AGENTS.md`, the agent that
 maintains the wiki reads the format's rules before it writes a single page.
 
+## The short way
+
+```bash
+henxels init --template okf-llm-wiki
+```
+
+On a repo with no wiki this seeds `wiki/` (index, starter concept, update log) and the
+contract below, green at birth. On a repo that already has a wiki it governs it in
+place: the wiki rules start at `level: warn`, so `henxels check` hands your agent a
+migration plan instead of blocking commits — delete the `level: warn` lines once it
+runs clean. Use `--wiki-dir <folder>` if the bundle doesn't live at `wiki/`, and
+`--dry-run` to preview. The rest of this guide is what that command sets up, and why.
+
 ## The contract
 
 Say the bundle lives in `wiki/` (any folder works — the spec blesses a whole repo, a

@@ -17,6 +17,27 @@ uvx henxels init        # zero-install via uv (or: pipx install henxels)
 `henxels init` detects your stack, writes a commented `henxels.yaml`, installs the
 teaching git hooks, and drops a contract digest into `AGENTS.md`.
 
+### Start from a template
+
+```bash
+henxels init --template okf-llm-wiki    # an Open Knowledge Format wiki
+```
+
+Templates ride on top of the detected starter. `okf-llm-wiki` sets up an
+[OKF](enforcing-okf.md) wiki two ways, depending on what it finds:
+
+- **No wiki yet** — seeds `wiki/` (an index, one starter concept, an update log) so the
+  contract holds from the first minute, with blocking rules: the wiki grows up inside
+  them.
+- **Existing wiki** — governs it without touching its content. The wiki rules start at
+  `level: warn`, so the findings are a migration plan, not blocked commits; when
+  `henxels check` runs clean, delete the `level: warn` lines to enforce.
+
+The wiki lives at `wiki/` by default; say `--wiki-dir pages` to govern another folder.
+If henxels spots markdown that might already be your wiki somewhere else, it stops and
+asks rather than guessing — the error contains the exact command to rerun. Add
+`--dry-run` to see what init would do without writing anything.
+
 > **Using husky (or another `core.hooksPath` tool)?** git then looks for hooks there, not
 > in `.git/hooks` where henxels installs — so henxels' hooks won't fire. `henxels init`
 > warns when it detects this, and `henxels doctor` flags it instead of reporting a

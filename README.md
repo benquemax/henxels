@@ -109,6 +109,10 @@ git add henxels.yaml AGENTS.md .henxels/   # commit your contract (see note belo
 # then add an "install henxels" line to your README — the contract assumes it's installed
 ```
 
+Building an **LLM wiki**? `henxels init --template okf-llm-wiki` sets up an
+[Open Knowledge Format](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md)
+wiki instead — seeded from scratch or governing the one you already have.
+
 > **Commit `.henxels/`, don't gitignore it.** It holds the JSON schema your editor uses
 > for autocomplete (your `henxels.yaml` points at it) and any custom checks you add — and
 > custom checks are contract logic that CI and teammates need. After upgrading henxels,
@@ -223,6 +227,16 @@ whoever writes the bundle — and small models drift hard against that bar: they
 against the conventions, and knowledge that belongs in **one** page ends up **scattered
 across several near-duplicate files**. henxels turns the OKF conventions into a contract
 the agent has to follow, and warns it the moment it's about to fragment a topic.
+
+One command sets all of this up — seeding a fresh wiki (green at birth), or governing an
+existing one gently (rules start at `level: warn`, so the findings are your agent's
+migration plan, not blocked commits):
+
+```bash
+henxels init --template okf-llm-wiki
+```
+
+The heart of the contract it writes:
 
 ```yaml
 settings:
