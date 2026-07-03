@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "henxels"
-version = "0.7.0"
+version = "0.8.0"
 description = "A repo-level harness for coding agents — file-level structure constraints that keep every agent true to your repo"
 readme = "README.md"
 license = {text = "MIT"}
