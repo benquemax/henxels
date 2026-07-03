@@ -33,8 +33,26 @@ jobs:
           { [ "$TAG" = "$PY" ] && [ "$TAG" = "$NPM" ]; } || {
             echo "::error::version mismatch — tag=$TAG pyproject=$PY npm=$NPM"; exit 1; }
 
-  pypi:
+  # Nothing reaches a registry unless the FULL battery passes on the tagged commit:
+  # units, E2E journeys, and the packaging cold start (real npm tarball + engine
+  # bootstrap). CI running on the branch is not enough — this is the release's own gate.
+  tests:
     needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: uv venv --python 3.12
+      - run: uv pip install -e ".[dev]"
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+      - run: uv run henxels check --all
+
+  pypi:
+    needs: [verify, tests]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # OIDC for PyPI Trusted Publishing (no token needed)

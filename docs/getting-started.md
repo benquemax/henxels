@@ -18,7 +18,9 @@ npm i -g henxels        # JS repos: no Python required — see below
 The npm package needs no Python on the machine: on first run its launcher downloads
 the official uv binary (verified against a pinned checksum), uv provisions a managed
 Python, and henxels runs at exactly the npm package's version. Everything is cached
-after the first run.
+after the first run. Machines that already have henxels or Python keep working — they
+are the launcher's offline fallbacks — and `HENXELS_ENGINE` forces a specific engine
+when you need to (e.g. `HENXELS_ENGINE=henxels` to use a PATH install).
 
 `henxels init` detects your stack, writes a commented `henxels.yaml`, installs the
 teaching git hooks, and drops a contract digest into `AGENTS.md`.
