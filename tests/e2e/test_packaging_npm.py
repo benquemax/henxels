@@ -81,10 +81,14 @@ def test_cold_start_bootstraps_engine_and_runs_pinned_henxels(sandbox):
     for tool in ("node", "tar", "realpath", "dirname"):
         os.symlink(shutil.which(tool), bin_dir / tool)
 
+    # Point the real bootstrap chain at the LOCAL engine: at release time the pinned
+    # version isn't on PyPI yet (publishing is gated on this very test), and testing
+    # the tree being released is stronger anyway. The published pin is what the
+    # release workflow's post-publish smoke verifies.
+    env = {**sandbox.env, "PATH": str(bin_dir), "HENXELS_ENGINE_SPEC": str(ROOT)}
     result = subprocess.run(
         ["node", str(bin_path), "catalogue"],
-        capture_output=True, text=True, timeout=600,
-        cwd=str(sandbox.base), env={**sandbox.env, "PATH": str(bin_dir)},
+        capture_output=True, text=True, timeout=600, cwd=str(sandbox.base), env=env,
     )
     combined = result.stdout + result.stderr
     assert result.returncode == 0, combined
@@ -99,8 +103,7 @@ def test_cold_start_bootstraps_engine_and_runs_pinned_henxels(sandbox):
     # Second run must reuse the cached engine: no bootstrap line this time.
     again = subprocess.run(
         ["node", str(bin_path), "catalogue"],
-        capture_output=True, text=True, timeout=600,
-        cwd=str(sandbox.base), env={**sandbox.env, "PATH": str(bin_dir)},
+        capture_output=True, text=True, timeout=600, cwd=str(sandbox.base), env=env,
     )
     assert again.returncode == 0, again.stdout + again.stderr
     assert "fetching its engine" not in again.stderr

@@ -72,7 +72,8 @@ def test_uvx_is_tried_first_with_the_pinned_version(tmp_path):
     fake.chmod(0o755)
     result = _launch("init", "--dry-run", path=str(tmp_path))
     assert result.returncode == 0
-    assert capture.read_text(encoding="utf-8").strip() == f"henxels@{_package()['version']} init --dry-run"
+    expected = f"--from henxels=={_package()['version']} henxels init --dry-run"
+    assert capture.read_text(encoding="utf-8").strip() == expected
 
 
 @needs_node

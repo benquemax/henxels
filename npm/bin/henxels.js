@@ -10,6 +10,9 @@ const { spawnSync } = require("child_process");
 
 const { ensureUv } = require("./bootstrap.cjs");
 const PIN = require("../package.json").version;
+// What uv installs and runs. Overridable so release tests can point the REAL bootstrap
+// at the not-yet-published engine (a local tree or wheel) instead of the PyPI pin.
+const SPEC = process.env.HENXELS_ENGINE_SPEC || `henxels==${PIN}`;
 
 const argv = process.argv.slice(2);
 
@@ -29,7 +32,7 @@ function run(cmd, args) {
   }
 
   // Pinned engines first — the version you npm-installed is the version that runs.
-  run("uvx", [`henxels@${PIN}`, ...argv]);
+  run("uvx", ["--from", SPEC, "henxels", ...argv]);
 
   let uv = null;
   try {
@@ -38,7 +41,7 @@ function run(cmd, args) {
     process.stderr.write(`${error.message}\n`);
     process.exit(1); // a checksum mismatch must never fall through to another engine
   }
-  if (uv) run(uv, ["tool", "run", `henxels@${PIN}`, ...argv]);
+  if (uv) run(uv, ["tool", "run", "--from", SPEC, "henxels", ...argv]);
 
   // Offline fallbacks: whatever henxels the machine already has.
   run("henxels", argv);
