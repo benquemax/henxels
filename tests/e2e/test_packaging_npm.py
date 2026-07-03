@@ -1,13 +1,17 @@
-"""The frontend-dev cold start, for real: node + the npm launcher and nothing else.
+"""The npm artifact, tested as users receive it: pack the tarball, install it, run it.
 
-Network required (downloads uv from GitHub, Python + henxels via uv), so this is
-`packaging`-marked: it gates releases and CI packaging jobs, not everyday pushes.
+The cold-start test is the frontend-dev simulation — node + tar + coreutils on PATH and
+nothing else; the launcher bootstraps uv, uv provisions Python, henxels runs pinned.
+Network required, so everything here is `packaging`-marked: it gates CI and releases,
+not everyday pushes.
 """
 
+import json
 import os
 import shutil
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -16,12 +20,60 @@ ROOT = Path(__file__).resolve().parents[2]
 
 pytestmark = [
     pytest.mark.packaging,
-    pytest.mark.skipif(shutil.which("node") is None, reason="node not installed"),
+    pytest.mark.skipif(shutil.which("node") is None or shutil.which("npm") is None,
+                       reason="node/npm not installed"),
     pytest.mark.skipif(sys.platform == "win32", reason="minimal-PATH symlinks are POSIX"),
 ]
 
 
+def _install_packed_tarball(sandbox) -> Path:
+    """npm pack (from a copy — prepack must not dirty the repo) + global install into
+    the sandbox. Returns the installed `henxels` bin, exactly as a user would get it."""
+    staging = sandbox.base / "pack"
+    shutil.copytree(ROOT / "npm", staging / "npm")
+    shutil.copy(ROOT / "README.md", staging / "README.md")  # what prepack copies in
+
+    packed = sandbox.run(
+        ["npm", "pack", "--json", "--pack-destination", str(sandbox.base)],
+        cwd=staging / "npm", env_extra={"PATH": os.environ["PATH"]},
+    )
+    assert packed.returncode == 0, packed.stderr
+    tarball = sandbox.base / json.loads(packed.stdout)[0]["filename"]
+
+    names = tarfile.open(tarball).getnames()
+    for rel in ("package/bin/henxels.js", "package/bin/bootstrap.cjs",
+                "package/uv-manifest.json", "package/README.md"):
+        assert rel in names, f"tarball is missing {rel}"
+
+    prefix = sandbox.base / "npm-prefix"
+    installed = sandbox.run(
+        ["npm", "install", "-g", "--prefix", str(prefix), str(tarball)],
+        cwd=sandbox.base, env_extra={"PATH": os.environ["PATH"]},
+    )
+    assert installed.returncode == 0, installed.stderr
+    bin_path = prefix / "bin" / "henxels"
+    assert bin_path.exists()
+    return bin_path
+
+
+def test_installed_package_resolves_its_own_files(sandbox):
+    # No network, no engine: the override proves the installed bin, its relative
+    # requires (package.json, bootstrap, manifest), and exit-code plumbing all work
+    # in the post-install layout.
+    bin_path = _install_packed_tarball(sandbox)
+    result = sandbox.run(
+        [shutil.which("node"), str(bin_path), "--version"],
+        cwd=sandbox.base,
+        env_extra={"HENXELS_SKIP_BOOTSTRAP": "1",
+                   "HENXELS_ENGINE": f"{sys.executable} -m henxels", "PATH": ""},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "henxels v" in result.stdout
+
+
 def test_cold_start_bootstraps_engine_and_runs_pinned_henxels(sandbox):
+    bin_path = _install_packed_tarball(sandbox)
+
     # The documented minimal footprint: node + tar + POSIX coreutils (uv's entry shims
     # use realpath/dirname). Crucially absent: python, uv, uvx, henxels, gzip.
     bin_dir = sandbox.base / "bin"
@@ -30,7 +82,7 @@ def test_cold_start_bootstraps_engine_and_runs_pinned_henxels(sandbox):
         os.symlink(shutil.which(tool), bin_dir / tool)
 
     result = subprocess.run(
-        ["node", str(ROOT / "npm" / "bin" / "henxels.js"), "catalogue"],
+        ["node", str(bin_path), "catalogue"],
         capture_output=True, text=True, timeout=600,
         cwd=str(sandbox.base), env={**sandbox.env, "PATH": str(bin_dir)},
     )
@@ -46,7 +98,7 @@ def test_cold_start_bootstraps_engine_and_runs_pinned_henxels(sandbox):
 
     # Second run must reuse the cached engine: no bootstrap line this time.
     again = subprocess.run(
-        ["node", str(ROOT / "npm" / "bin" / "henxels.js"), "catalogue"],
+        ["node", str(bin_path), "catalogue"],
         capture_output=True, text=True, timeout=600,
         cwd=str(sandbox.base), env={**sandbox.env, "PATH": str(bin_dir)},
     )

@@ -26,7 +26,24 @@ jobs:
         run: uv run ruff check .
 
       - name: Run the test suite
-        run: uv run pytest -q
+        run: uv run pytest -q -m "not packaging"
 
       - name: Validate the contract (dogfood)
         run: uv run henxels check --all
+
+  # The distributed artifacts, tested as users receive them: pack the npm tarball,
+  # install it, cold-start the engine bootstrap for real (network downloads).
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up Python
+        run: uv venv --python 3.12
+      - name: Install henxels (with dev deps)
+        run: uv pip install -e ".[dev]"
+      - name: Run packaging E2E
+        run: uv run pytest -q -m packaging

@@ -45,7 +45,9 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 
   npm:
-    needs: verify
+    # After pypi, never in parallel: the npm launcher runs the engine pinned to its own
+    # version, so the PyPI release must exist before anyone can npm-install this one.
+    needs: [verify, pypi]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # OIDC for npm Trusted Publishing (no token) + provenance
@@ -69,3 +71,29 @@ jobs:
         # No token and no --provenance: OIDC trusted publishing authenticates and
         # attaches provenance automatically (id-token: write above).
         run: npm publish --access public
+
+  # The release isn't green until a stranger's install works: fresh runner, install the
+  # JUST-PUBLISHED npm package, let the launcher bootstrap its engine, use it for real.
+  smoke:
+    needs: [pypi, npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Wait for both registries to serve the new version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          for i in $(seq 1 36); do
+            npm view "henxels@$VERSION" version >/dev/null 2>&1 && break; sleep 5; done
+          for i in $(seq 1 36); do
+            curl -fsS "https://pypi.org/pypi/henxels/$VERSION/json" >/dev/null 2>&1 && break; sleep 5; done
+      - name: Fresh npm install runs end to end
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm install -g "henxels@$VERSION"
+          henxels catalogue | grep -q filename_casing
+          mkdir demo && cd demo && git init -q
+          git config user.email smoke@example.com && git config user.name Smoke
+          henxels init --template okf-llm-wiki
+          henxels check --all
