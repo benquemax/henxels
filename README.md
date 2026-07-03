@@ -1,10 +1,11 @@
 <!-- markdownlint-disable -->
 ```
-   ╭───────────────╮
-   │  ╷  ╷   ╷  ╷  │   h e n x e l s
-   │  ╵‖ ╵   ╵ ‖╵  │   suspenders for your repo
-   │   ‖       ‖   │   keep your ADHD agent in henxels
-   ╰───────────────╯
+   ╭─╮            ╭─╮
+   │ │            │ │      h e n x e l s
+   ├─┤            ├─┤
+ ╭─┴─┴────────────┴─┴─╮    suspenders for your repo
+ │     your repo      │    keep your ADHD agent in henxels
+ ╰────────────────────╯
 ```
 <!-- markdownlint-enable -->
 
