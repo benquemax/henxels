@@ -110,7 +110,13 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           npm install -g "henxels@$VERSION"
-          henxels catalogue | grep -q filename_casing
+          # Captured, not piped straight to `grep -q`: under this shell's default
+          # pipefail, grep closing the pipe the instant it matches can SIGPIPE a
+          # still-flushing producer (a real, if racy, failure we hit on 0.8.0's
+          # release). Capturing first means henxels has already exited before grep
+          # ever runs, so there's no live pipe left to break.
+          OUTPUT="$(henxels catalogue)"
+          echo "$OUTPUT" | grep -q filename_casing
           mkdir demo && cd demo && git init -q
           git config user.email smoke@example.com && git config user.name Smoke
           henxels init --template okf-llm-wiki
