@@ -2,74 +2,81 @@
 # henxels.yaml — annotated example contract
 # =============================================================================
 # Copy to your repo root as `henxels.yaml` and trim to taste. Read it top to
-# bottom like a document. The closest rule in the tree wins. To disobey a rule,
-# change this file — that's the only sanctioned escape.
+# bottom like a document. Each bullet under `henxels:` is one rule — a *henxel*:
+# a sentence plus the checks that must pass. Every henxel that applies to a path
+# is enforced (they don't override each other). To disobey a rule, change this
+# file — that's the only sanctioned escape.
 #
-# Editors with the YAML language server autocomplete keys and enum values from
-# the schema referenced below.
+# Browse every check you can use with `henxels catalogue`. Editors with the YAML
+# language server autocomplete keys and enum values from the schema below.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/benquemax/henxels/main/henxels/schema/henxels.schema.json
 
-henxels: 1                      # contract schema version
+# -----------------------------------------------------------------------------
+# SETTINGS — behaviours, not tests: protections + tuning knobs
+# -----------------------------------------------------------------------------
+settings:
+  ask_me_before_staging: true      # remind agents to let YOU `git add` and push
+  confirm_before_push: true        # block `git push` until `henxels bless push`
+  confirm_before_deleting:         # losing information should be deliberate
+    over_lines: 5                  # net removed lines that trip the delete guard
+  warn_about_similar_files:        # duplication awareness (warnings only)
+    above: 0.85                    # 0..1; higher = stricter about near-copies
+    ignore:                        # files that are alike *by purpose* — skip them
+      - "**/__init__.py"
+      - "**/*.test.*"
+  # warn_about_large_files:        # nudge (never block) past a size budget
+  #   over: "500 lines"            # unit: b | kb | mb | gb | tokens | lines
 
 # -----------------------------------------------------------------------------
-# GUARDS — turn destructive reflexes into a conscious act
+# HENXELS — the rule list
+#   in:     where it applies — ./dir = that level, ./dir/* = recursive,
+#           ./ = repo root; omit `in:` to mean the whole repo
+#   except: paths carved out of `in:`
+#   level:  block (default) | warn
+#   why:    background that rides into AGENTS.md so agents read the intent
 # -----------------------------------------------------------------------------
-# off   = allowed
-# bless = blocked until `henxels bless <action>` (a one-time, fingerprinted token)
-# ask   = not blocked; reminds the agent (used for `stage`)
-guards:
-  push: bless                   # `git push` waits for `henxels bless push`
-  delete:                       # losing information should be deliberate
-    mode: bless
-    line_threshold: 5           # net removed lines that trip the guard
-  stage: ask                    # remind agents to let YOU stage and push
-  # commit: off                 # commit guard is off by default
+henxels:
+  - henxel: "Project config lives only in pyproject.toml"
+    forbidden_files: [setup.py, setup.cfg]   # no `in:` → whole repo; bare names match anywhere
 
-# -----------------------------------------------------------------------------
-# SIMILARITY — duplication awareness over committed files (warnings only)
-# -----------------------------------------------------------------------------
-similarity:
-  warn_above: 0.85              # 0..1; higher = stricter about near-copies
-  exclude:                      # files that are similar *by purpose* — skip them
-    - "**/__init__.py"
-    - "**/index.ts"
-    - "**/*.test.*"
+  - henxel: "Application code is snake_case and lives in src/"
+    in: ./src/*                    # the trailing * makes it recursive
+    filename_casing: snake_case    # snake_case | kebab-case | camelCase | PascalCase | SCREAMING_SNAKE_CASE | any
+    why: "one obvious home for source keeps agents from scattering modules"
 
-# -----------------------------------------------------------------------------
-# CANONICAL — the one true home of a thing; forbid look-alikes
-# -----------------------------------------------------------------------------
-canonical:
-  - role: "project config"
-    file: pyproject.toml
-    forbid_lookalikes: ["setup.py", "setup.cfg"]   # bare names match anywhere
+  - henxel: "Tests belong in tests/, not beside the source they cover"
+    in: ./src/*
+    forbidden_files: ["**/*_test.py"]   # the sentence above is the steer shown on a hit
 
-# -----------------------------------------------------------------------------
-# TREE — folders mirror your repo; rules cascade into subfolders
-# -----------------------------------------------------------------------------
-tree:
-  src:
-    naming: snake_case          # snake_case | kebab-case | camelCase | PascalCase
-    purpose: "application code"  #            | SCREAMING_SNAKE_CASE | any
-    forbid:
-      - glob: "**/*_test.py"
-        reason: "tests live in tests/, not beside the source"
-        steer: "create the test under tests/ mirroring this path"
-    api:
-      require:
-        - file: handlers.py
-          reason: "every api module exposes handlers"
-    ui:
-      naming: kebab-case        # closest rule wins: ui overrides src's snake_case
-  tests:
-    naming: snake_case
-    mirror: src/**              # tests should mirror the src tree
-  docs:
-    naming: kebab-case
+  - henxel: "Every api module exposes handlers"
+    in: ./src/api
+    required_files: handlers.py
 
-# -----------------------------------------------------------------------------
-# PLUGINS — opt-in extras (off unless listed here)
-# -----------------------------------------------------------------------------
-# plugins:
-#   markdown: true              # lint .md files via pymarkdownlnt (warnings)
-#   frontmatter:
-#     docs: [title, date]       # .md files under docs/ must declare these keys
+  - henxel: "UI files are kebab-case"
+    in: ./src/ui/*                 # a narrower rule sits happily beside the src-wide one
+    filename_casing: kebab-case
+
+  - henxel: "Docs are kebab-case markdown, each with a title and summary"
+    in: ./docs
+    allowed_filetypes: .md         # a scalar; a list is OR: [.md, .mdx]
+    filename_casing: kebab-case
+    required_frontmatter: [title, summary]   # a list here is AND: both required
+
+  - henxel: "Docs have no dead internal links"
+    in: ./docs/*
+    links_resolve: true
+
+  - henxel: "No credentials anywhere in the repo"
+    no_secrets: true
+
+  - henxel: "The test suite passes before every commit"
+    run_before_commit: "pytest -q"
+
+  - henxel: "The contract holds before every push"
+    run_before_push: "henxels check --all"
+
+  - henxel: "Behaviour changes update the docs"
+    changed_with:                  # a commit-time reminder; only fires when relevant
+      when: src/**                 # if source is staged...
+      expect: [docs/**, README.md] # ...docs should change too
+    level: warn
