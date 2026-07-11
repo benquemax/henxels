@@ -5,6 +5,8 @@ Empty repo → seed wiki, blocking rules, green at birth. Existing wiki → gove
 instructive error carrying the exact rerun command, never a silent guess.
 """
 
+import re
+
 import pytest
 
 from henxels.cli import main
@@ -65,7 +67,10 @@ def test_compose_with_detected_project_type(tmp_path):
     text = (tmp_path / "henxels.yaml").read_text(encoding="utf-8")
     assert "snake_case" in text  # the python starter rode along
     assert "rooted_links_resolve" in text  # and the wiki henxels too
-    assert text.count("henxels:") == 1 and text.count("settings:") == 1
+    # exactly one top-level henxels: / settings: block (match at line start so
+    # requires_henxels: doesn't count as a second henxels:)
+    assert len(re.findall(r"(?m)^henxels:", text)) == 1
+    assert len(re.findall(r"(?m)^settings:", text)) == 1
     assert _findings(tmp_path) == []  # still green at birth
 
 

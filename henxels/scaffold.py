@@ -347,7 +347,11 @@ def init(
         if template:
             report["fragment"] = fragment  # paste-able: never edit an existing contract
     else:
-        body = _HEADER + (_OKF_SETTINGS if template else _SETTINGS) + _CONTRACTS.get(kind, _GENERIC) + fragment
+        # The OKF checks (no_frontmatter, the frontmatter_dates datetime form) landed in
+        # 0.6, so the template declares that floor — a teammate on an older install gets a
+        # clear "upgrade" message instead of cryptic per-check errors.
+        requires = '\nrequires_henxels: ">=0.6"   # the OKF checks below need henxels >= 0.6\n' if template else ""
+        body = _HEADER + requires + (_OKF_SETTINGS if template else _SETTINGS) + _CONTRACTS.get(kind, _GENERIC) + fragment
         cfg_path.write_text(body, encoding="utf-8")
         report["contract"] = ("created", kind)
 

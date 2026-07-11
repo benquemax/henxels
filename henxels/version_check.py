@@ -49,6 +49,29 @@ def update_notice(installed=_UNSET, latest=_UNSET, env: dict | None = None) -> s
     )
 
 
+def requirement_unmet(requires, installed=_UNSET) -> str | None:
+    """Message when the installed henxels is older than a contract's ``requires_henxels``
+    floor, else None. Silent when there's no floor or the version can't be determined
+    (a source checkout) — better to run than to false-block. ``installed`` defaults to the
+    detected version; pass it explicitly (including None for "unknown") to override."""
+    if not requires:
+        return None
+    inst = installed_version() if installed is _UNSET else installed
+    if not inst:
+        return None
+    floor = str(requires).lstrip("><=~^ ").strip()
+    try:
+        if _parse(inst) >= _parse(floor):
+            return None
+    except (TypeError, ValueError):
+        return None
+    return (
+        f"this contract needs henxels >= {floor}, but you're running {inst}. "
+        f"Upgrade: uv tool upgrade henxels (or pipx/pip -U), then `henxels init` "
+        f"to refresh hooks — or lower requires_henxels in henxels.yaml."
+    )
+
+
 def latest_version(timeout: float = 1.5, now: float | None = None) -> str | None:
     """The newest version on PyPI, cached for a day. None if it can't be determined."""
     now = time.time() if now is None else now

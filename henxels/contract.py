@@ -64,6 +64,7 @@ class Contract:
     settings: dict = field(default_factory=dict)
     henxels: list[Henxel] = field(default_factory=list)
     imports: list[str] = field(default_factory=list)
+    requires: str | None = None  # optional `requires_henxels:` floor, e.g. ">=0.6"
     path: Path | None = None
     raw: dict = field(default_factory=dict)
 
@@ -80,10 +81,12 @@ def load_contract(path: Path | str) -> Contract:
         raise ContractError(f"Contract at {path} must be a mapping")
 
     henxels = [_to_henxel(item) for item in _as_list(raw.get("henxels")) if isinstance(item, dict)]
+    requires = raw.get("requires_henxels")
     return Contract(
         settings=raw.get("settings") if isinstance(raw.get("settings"), dict) else {},
         henxels=henxels,
         imports=_as_list(raw.get("imports")),
+        requires=str(requires) if requires else None,
         path=path,
         raw=raw,
     )

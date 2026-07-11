@@ -12,15 +12,32 @@ from pathlib import Path
 
 from henxels.contract import Contract
 from henxels.engine.discover import discover
-from henxels.findings import Finding
+from henxels.findings import BLOCK, Finding
 from henxels.statements.registry import StatementDef, get_statement
 from henxels.statements.scope import Scope, build_scope
+from henxels.version_check import requirement_unmet
 
 
 def run_contract(
     contract: Contract, root: Path | str, files: list[str] | None = None, diff=None
 ) -> list[Finding]:
     root = Path(root)
+
+    # Version floor first: if the contract declares it needs a newer henxels than this
+    # one, say so once — clearly — instead of letting every newer check fail cryptically.
+    unmet = requirement_unmet(contract.requires)
+    if unmet:
+        return [
+            Finding(
+                level=BLOCK,
+                henxel="This contract requires a newer henxels",
+                path="",
+                message="",
+                details=[unmet],
+                steer="upgrade henxels, or lower requires_henxels in henxels.yaml",
+            )
+        ]
+
     all_files = files if files is not None else discover(root)
 
     findings: list[Finding] = []
@@ -30,7 +47,11 @@ def run_contract(
         for name, param in hx.statements.items():
             sdef = get_statement(name)
             if sdef is None:
-                instructions.append(f"unknown check '{name}' — import the module that defines it")
+                instructions.append(
+                    f"unknown check '{name}' — if it's a newer built-in, upgrade henxels "
+                    f"(you're on {_running_version()}); if it's a custom check, import the "
+                    f"module that defines it"
+                )
                 continue
             if sdef.stage is not None:
                 continue  # command gate; runs in the hooks
@@ -58,7 +79,11 @@ def _invoke(sdef: StatementDef, param, scope: Scope, sentence: str, diff=None) -
         try:
             return sdef.fn(*[args[p] for p in sdef.params])
         except Exception as exc:  # noqa: BLE001 - a broken check shouldn't crash the run
-            return f"check '{sdef.name}' errored: {exc}"
+            return (
+                f"check '{sdef.name}' errored: {exc} — often a version skew "
+                f"(you're on henxels {_running_version()}); if the contract uses newer "
+                f"syntax, upgrading may fix it"
+            )
 
     out: list[str] = []
     if sdef.per_file:
@@ -89,6 +114,12 @@ def _with_file(message: str, file: str | None) -> str:
     if file and file not in message:
         return f"{file} — {message}"
     return message
+
+
+def _running_version() -> str:
+    from henxels import __version__  # lazy: avoids an import cycle at module load
+
+    return __version__
 
 
 def stage_commands(contract: Contract, stage: str) -> list[str]:

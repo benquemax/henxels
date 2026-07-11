@@ -11,6 +11,10 @@
       "type": "array",
       "items": { "type": "string" }
     },
+    "requires_henxels": {
+      "description": "Minimum henxels version this contract needs (e.g. \">=0.6\" or \"0.6\"). An older install blocks with a clear upgrade message instead of cryptic per-check errors.",
+      "type": "string"
+    },
     "settings": { "$ref": "#/$defs/settings" },
     "henxels": {
       "description": "The rule list. Each item is one henxel.",

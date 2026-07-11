@@ -51,6 +51,21 @@ A henxel can carry two more optional keys:
     why: "The roadmap is planned now -> next -> later; route each item into its bucket."
 ```
 
+## Requiring a henxels version
+
+If your contract uses newer built-ins, declare the floor so a teammate on an older
+install gets one clear message instead of cryptic per-check failures:
+
+```yaml
+requires_henxels: ">=0.6"    # a bare "0.6" works too — it means "at least"
+```
+
+When the running henxels is older, `henxels check` (and the commit hook) block with
+*"this contract needs henxels >= 0.6, but you're running 0.5.6 — upgrade…"* rather than
+`unknown check 'no_frontmatter'` or a raw `errored:` traceback. `henxels init
+--template okf-llm-wiki` sets this automatically. Even without it, unknown-check and
+errored-check messages now name the version you're on and suggest upgrading.
+
 ## Statements
 
 Run `henxels catalogue` to see the built-in standard library. A few:
