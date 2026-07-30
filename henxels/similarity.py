@@ -68,14 +68,24 @@ def find_duplicates(
     return results
 
 
+DEFAULT_AT_MOST = 20  # a bulk import must not bury the commit output
+
+
 def warn_similar(sim: dict | None, root: Path | str, candidates: list[str]) -> list[Finding]:
-    """Settings-driven duplication warnings (v2). ``sim`` = {'above', 'ignore'} or None."""
+    """Settings-driven duplication warnings (v2).
+
+    ``sim`` = {'above', 'ignore', 'at_most'} or None. Awareness needs a handful
+    of examples, not a transcript: past ``at_most`` pairs we print a count
+    instead, so importing an archive stays readable.
+    """
     if not sim:
         return []
     threshold = float(sim.get("above", 0.85))
     excludes = sim.get("ignore", []) or []
+    at_most = int(sim.get("at_most", DEFAULT_AT_MOST))
     findings: list[Finding] = []
-    for cand, other, ratio in find_duplicates(root, candidates, threshold, excludes):
+    pairs = find_duplicates(root, candidates, threshold, excludes)
+    for cand, other, ratio in pairs[:at_most]:
         findings.append(
             Finding(
                 level=WARN,
@@ -83,6 +93,20 @@ def warn_similar(sim: dict | None, root: Path | str, candidates: list[str]) -> l
                 path=cand,
                 message="",
                 details=[f"~{round(ratio * 100)}% similar to {other} — reuse it, or confirm this copy is intentional"],
+            )
+        )
+    if len(pairs) > at_most:
+        findings.append(
+            Finding(
+                level=WARN,
+                henxel="Possible duplicates (many)",
+                path=pairs[at_most][0],
+                message="",
+                details=[
+                    f"and {len(pairs) - at_most} more similar files not listed — "
+                    "if this is a bulk import, exclude it via "
+                    "settings.warn_about_similar_files.ignore"
+                ],
             )
         )
     return findings

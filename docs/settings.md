@@ -41,6 +41,11 @@ Warns (never blocks) when a changed file is a near-copy of a committed one — t
 anti-scatter nudge that pushes an agent to update an existing file instead of cloning it.
 `above` is the similarity ratio (0–1); `ignore` is a list of globs to skip.
 
+`at_most` (default 20) caps how many pairs are listed before the rest collapse into a
+single count. Importing an archive or a vendored tree can make hundreds of files resemble
+each other, and a warning nobody can read is a warning nobody reads. If a whole folder is
+legitimately full of near-copies, `ignore` it rather than raising the cap.
+
 ## warn_about_large_files
 
 Warns when a file exceeds a size threshold. `over` is unit-aware: `8000 tokens`,

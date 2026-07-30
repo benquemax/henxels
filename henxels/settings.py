@@ -11,6 +11,7 @@ from henxels.contract import Contract
 
 DEFAULT_DELETE_LINES = 5
 DEFAULT_SIMILARITY = 0.85
+DEFAULT_AT_MOST = 20  # duplicate warnings shown before we switch to a count
 DEFAULT_LARGE_FILE = "8000 tokens"
 
 
@@ -35,16 +36,17 @@ def delete_protection(contract: Contract) -> dict | None:
 
 
 def similarity(contract: Contract) -> dict | None:
-    """Return {'above': float, 'ignore': [...]} when similarity warnings are on."""
+    """Return {'above': float, 'ignore': [...], 'at_most': int} when similarity warnings are on."""
     raw = contract.settings.get("warn_about_similar_files")
     if not raw:
         return None
     if raw is True:
-        return {"above": DEFAULT_SIMILARITY, "ignore": []}
+        return {"above": DEFAULT_SIMILARITY, "ignore": [], "at_most": DEFAULT_AT_MOST}
     if isinstance(raw, dict):
         return {
             "above": float(raw.get("above", DEFAULT_SIMILARITY)),
             "ignore": raw.get("ignore", []) or [],
+            "at_most": int(raw.get("at_most", DEFAULT_AT_MOST)),
         }
     return None
 

@@ -44,3 +44,34 @@ def test_warn_similar_finding_is_warning(git_repo):
     findings = warn_similar({"above": 0.85}, git_repo, ["copy.py"])
     assert findings and not findings[0].is_block
     assert "similar to original.py" in findings[0].details[0]
+
+
+def test_bulk_import_is_summarised_not_dumped(git_repo):
+    # A bulk import (an archive, a vendored tree, generated variations) can make
+    # every added file resemble another. One warning per pair buries the commit
+    # output in thousands of lines nobody reads, so past a cap we summarise.
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    names = []
+    for i in range(30):
+        name = f"copy{i}.py"
+        (git_repo / name).write_text(f"{BODY}\n# {i}\n", encoding="utf-8")
+        names.append(name)
+
+    findings = warn_similar({"above": 0.85, "at_most": 5}, git_repo, names)
+
+    assert len(findings) == 6  # 5 detailed + 1 summary
+    assert "25 more" in findings[-1].details[0]
+    assert not any(f.is_block for f in findings)
+
+
+def test_cap_is_not_applied_below_the_limit(git_repo):
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "copy.py").write_text(BODY + "\n", encoding="utf-8")
+
+    findings = warn_similar({"above": 0.85, "at_most": 5}, git_repo, ["copy.py"])
+    assert len(findings) == 1
+    assert "more" not in findings[0].details[0]
