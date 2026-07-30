@@ -53,6 +53,17 @@ asks rather than guessing — the error contains the exact command to rerun. Add
 > core.hooksPath`), or call `henxels _precommit` / `henxels _prepush` from your existing
 > hooks.
 
+Another tool may have claimed the hook file first:
+
+> **Something else already owns `.git/hooks/pre-push` (git-lfs, a hand-rolled script)?**
+> henxels reports `skipped:foreign` and stands down rather than clobbering it — which
+> means the contract never runs. `henxels init --adopt-hooks` keeps both: your hook moves
+> to `pre-push.local` and henxels calls it after the contract, passing along the arguments
+> *and* stdin (pre-push receives its refs there, and git-lfs reads them to decide what to
+> upload). Don't hand-merge another tool's lines into henxels' hook instead — the next
+> `henxels init` rewrites any file carrying our marker and your lines vanish silently. A
+> chained file can't be clobbered.
+
 A related gotcha is when git *finds* the hook but the hook can't find henxels:
 
 > **Hook fails with `No module named henxels`?** The hook found a python but not henxels

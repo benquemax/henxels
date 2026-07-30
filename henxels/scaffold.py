@@ -311,6 +311,7 @@ def starter_contract(kind: str) -> str:
 def init(
     root: Path | str,
     install_git_hooks: bool = True,
+    adopt_hooks: bool = False,
     write_digest: bool = True,
     force: bool = False,
     template: str | None = None,
@@ -374,7 +375,11 @@ def init(
     write_local_schema(root)
     report["schema"] = LOCAL_SCHEMA_PATH
 
-    report["hooks"] = install_hooks(root) if (install_git_hooks and is_git_repo(root)) else None
+    report["hooks"] = (
+        install_hooks(root, adopt=adopt_hooks)
+        if (install_git_hooks and is_git_repo(root))
+        else None
+    )
     # If core.hooksPath (husky, etc.) shadows .git/hooks, the hooks we wrote there won't
     # fire — record it so init warns instead of a silent no-op.
     report["hooks_shadowed"] = shadowing_hooks_path(root) if report["hooks"] else None

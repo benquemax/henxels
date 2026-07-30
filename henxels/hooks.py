@@ -2,6 +2,13 @@
 
 We only ever touch a hook we own (marked with ``HENXELS_MARKER``). A pre-existing
 foreign hook is left alone and reported, so we never clobber someone's setup.
+
+With ``adopt=True`` a foreign hook is instead moved to ``<hook>.local`` and
+chained after the contract, so henxels and the other tool (git-lfs, husky, a
+hand-rolled script) both run. Chaining beats merging: because we rewrite any
+file carrying our marker, anything merged *into* our hook is silently lost on the
+next install — for git-lfs that means pushes quietly stop uploading objects.
+A separate file cannot be clobbered.
 """
 
 from __future__ import annotations
@@ -15,7 +22,7 @@ HENXELS_MARKER = "# henxels-managed hook"
 HOOKS = {"pre-commit": "_precommit", "pre-push": "_prepush"}
 
 
-def _script(subcommand: str) -> str:
+def _script(subcommand: str, hook: str) -> str:
     # Resolve henxels, preferring THIS project's environment over a global install — so
     # the hook runs the version the project pins (and its extras, e.g. pymarkdownlnt for
     # markdown_lint), not whatever happens to be on PATH. Order: activated venv, ./.venv,
@@ -51,6 +58,14 @@ def _script(subcommand: str) -> str:
         '  echo "  To bypass the contract for this one commit: git commit --no-verify." >&2\n'
         "  exit 1\n"
         "fi\n"
+        # A chained hook must see the same stdin we were handed (pre-push gets
+        # its refs there), so buffer it once and replay it to both.
+        f'CHAIN="$(dirname "$0")/{hook}.local"\n'
+        'if [ -x "$CHAIN" ]; then\n'
+        '  IN="$(mktemp)"; cat > "$IN"\n'
+        f'  HENXELS_CMD="$H" $H {subcommand} "$@" < "$IN" || {{ rc=$?; rm -f "$IN"; exit $rc; }}\n'
+        '  "$CHAIN" "$@" < "$IN"; rc=$?; rm -f "$IN"; exit $rc\n'
+        "fi\n"
         f'HENXELS_CMD="$H" exec $H {subcommand} "$@"\n'
     )
 
@@ -59,8 +74,13 @@ def hooks_dir(root: Path | str) -> Path:
     return Path(root) / ".git" / "hooks"
 
 
-def install_hooks(root: Path | str, force: bool = False) -> dict[str, str]:
-    """Install the hooks. Returns {hook: 'installed'|'updated'|'skipped:foreign'|'no-git'}."""
+def install_hooks(root: Path | str, force: bool = False, adopt: bool = False) -> dict[str, str]:
+    """Install the hooks.
+
+    Returns {hook: 'installed'|'updated'|'adopted'|'skipped:foreign'|'no-git'}.
+    ``adopt`` moves a foreign hook to ``<hook>.local`` and chains it instead of
+    standing down; ``force`` overwrites it outright.
+    """
     hdir = hooks_dir(root)
     if not hdir.parent.exists():  # no .git
         return {hook: "no-git" for hook in HOOKS}
@@ -69,19 +89,25 @@ def install_hooks(root: Path | str, force: bool = False) -> dict[str, str]:
     result: dict[str, str] = {}
     for hook, subcommand in HOOKS.items():
         path = hdir / hook
+        status = "installed"
         if path.exists():
             existing = path.read_text(encoding="utf-8", errors="replace")
             if HENXELS_MARKER in existing:
-                path.write_text(_script(subcommand), encoding="utf-8")
+                path.write_text(_script(subcommand, hook), encoding="utf-8")
                 _make_executable(path)
                 result[hook] = "updated"
                 continue
-            if not force:
+            if adopt:
+                chain = path.with_name(hook + ".local")
+                path.replace(chain)
+                _make_executable(chain)
+                status = "adopted"
+            elif not force:
                 result[hook] = "skipped:foreign"
                 continue
-        path.write_text(_script(subcommand), encoding="utf-8")
+        path.write_text(_script(subcommand, hook), encoding="utf-8")
         _make_executable(path)
-        result[hook] = "installed"
+        result[hook] = status
     return result
 
 

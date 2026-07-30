@@ -48,6 +48,11 @@ def main(argv: list[str] | None = None) -> int:
 
     pi = sub.add_parser("init", help="scaffold the contract, hooks, and AGENTS.md digest")
     pi.add_argument("--no-hooks", action="store_true")
+    pi.add_argument(
+        "--adopt-hooks",
+        action="store_true",
+        help="move an existing foreign hook to <hook>.local and chain it after the contract",
+    )
     pi.add_argument("--no-digest", action="store_true")
     pi.add_argument("--force", action="store_true")
     pi.add_argument("--template", choices=["okf-llm-wiki"], default=None,
@@ -292,6 +297,7 @@ def cmd_init(args) -> int:
         report = init(
             root,
             install_git_hooks=not args.no_hooks,
+            adopt_hooks=args.adopt_hooks,
             write_digest=not args.no_digest,
             force=args.force,
             template=args.template,
@@ -343,8 +349,14 @@ def cmd_init(args) -> int:
         print("• git hooks: skipped (not a git repo, or --no-hooks)")
     else:
         for hook, outcome in hooks.items():
-            mark = "✓" if outcome in ("installed", "updated") else "•"
+            mark = "✓" if outcome in ("installed", "updated", "adopted") else "•"
             print(f"{mark} git hook {hook}: {outcome}")
+            if outcome == "adopted":
+                print(f"    your previous hook is now {hook}.local and runs after the contract")
+            elif outcome == "skipped:foreign":
+                print(f"    something else owns .git/hooks/{hook} (git-lfs, husky, …).")
+                print("    Run `henxels init --adopt-hooks` to keep both: yours moves to")
+                print(f"    {hook}.local and is chained after the contract.")
         shadowed = report.get("hooks_shadowed")
         if shadowed:
             print(f"⚠ git hooks won't fire: core.hooksPath={shadowed} shadows .git/hooks.")
