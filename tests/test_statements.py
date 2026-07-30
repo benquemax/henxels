@@ -428,6 +428,20 @@ def test_well_formed_statements_on_real_repo():
     assert well_formed_statements(scope) == []
 
 
+def test_well_formed_statements_ignores_the_staged_subset():
+    # `henxels check` and the pre-commit hook scope themselves to *staged* files, so
+    # scope.all_files is a handful of paths, not the repo. "Is this statement covered
+    # by a test?" is a repo-wide question: reading the staged subset made every
+    # statement look untested and blocked commits that touched nothing related.
+    from pathlib import Path
+
+    from henxels.statements.builtins import well_formed_statements
+
+    root = Path(__file__).resolve().parent.parent
+    scope = build_scope(["./*"], ["README.md"], root, {})  # as if only README were staged
+    assert well_formed_statements(scope) == []
+
+
 # --- max_lines (per-file budget) -----------------------------------------
 
 def test_max_lines(tmp_path):
