@@ -89,7 +89,8 @@ def _render_settings(contract: Contract) -> list[str]:
 
 
 def update_block(text: str, digest: str) -> str:
-    block = f"{BEGIN}\n{digest.rstrip()}\n{END}"
+    # Blank line after the marker so the digest's first heading passes MD022.
+    block = f"{BEGIN}\n\n{digest.rstrip()}\n{END}"
     if BEGIN in text and END in text:
         pre = text[: text.index(BEGIN)]
         post = text[text.index(END) + len(END):]

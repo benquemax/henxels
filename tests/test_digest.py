@@ -34,6 +34,12 @@ def test_update_block_appends_and_replaces():
     assert "NEW" in out2 and out2.count(BEGIN) == 1
 
 
+def test_update_block_blank_line_after_begin_marker():
+    # MD022: a heading needs a blank line above it; the digest starts with one.
+    out = update_block("", "## The contract (henxels)\nbody")
+    assert f"{BEGIN}\n\n## The contract" in out
+
+
 def test_sync_file_preserves_human_text(tmp_path):
     target = tmp_path / "AGENTS.md"
     assert sync_file(target, CONTRACT) == "created"
