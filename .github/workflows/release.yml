@@ -23,7 +23,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tag matches pyproject + npm versions
         run: |
           TAG="${GITHUB_REF_NAME#v}"
@@ -40,9 +40,9 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: uv venv --python 3.12
@@ -57,8 +57,8 @@ jobs:
     permissions:
       id-token: write # OIDC for PyPI Trusted Publishing (no token needed)
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
 
@@ -71,8 +71,8 @@ jobs:
       id-token: write # OIDC for npm Trusted Publishing (no token) + provenance
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           # Intentionally NO registry-url: it writes an .npmrc with an empty
@@ -96,7 +96,7 @@ jobs:
     needs: [pypi, npm]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Wait for both registries to serve the new version
