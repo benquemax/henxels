@@ -22,6 +22,8 @@ keep agents and humans true to your repo's structure. These guides go deeper tha
 - [Agent integrations](agent-integrations.md) — the `AGENTS.md` digest and harness hooks.
 - [Enforcing OKF](enforcing-okf.md) — a worked contract for the Open Knowledge Format:
   keep an agent-maintained wiki conformant.
+- [The agentic project starter](agentic-project-starter.md) — `_todo.md`, `_temp/`,
+  `_vision/`, and `_plans/` for agent-driven work.
 - [Upgrading](upgrading.md) — the version nag, refreshing local files, schema evolution.
 
 ## The shape of it

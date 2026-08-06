@@ -100,7 +100,7 @@ _CONTRACTS = {"python": _PYTHON, "node": _NODE, "generic": _GENERIC}
 
 # --- use-case templates ----------------------------------------------------
 
-TEMPLATES = ("okf-llm-wiki",)
+TEMPLATES = ("okf-llm-wiki", "agentic-project")
 DEFAULT_WIKI_DIR = "wiki"
 _MIN_WIKI_MD = 3  # markdown files that make a folder look like an existing wiki
 
@@ -225,6 +225,86 @@ _SEED_LOG = """# Bundle update log
 """
 
 
+# --- the agentic project starter (agentic-project template) ----------------
+
+# The working folders an agent-driven project leans on, appended to the detected
+# starter: a parking lot, gitignored scratch space, a vision book, a plans shelf.
+_AGENTIC = """
+  # --- the agentic project starter (agentic-project template) --------------
+  - henxel: "No credentials anywhere in the repo"
+    no_secrets: true    # no `in:` = the whole repo — subfolders included
+
+  - henxel: "_todo.md exists at the repo root"
+    why: >
+      Tasks that surface during work but fall outside its scope go to _todo.md
+      instead of derailing the task at hand. They get done eventually.
+    in: .
+    required_files: _todo.md
+
+  - henxel: "_temp stays gitignored"
+    why: >
+      _temp/ is free scratch space — use it for anything temporary, nothing in
+      it is ever committed.
+    in: .
+    run_before_commit: git check-ignore -q _temp
+
+  - henxel: "_vision is a book: kebab-case markdown chapters, every page linked from index.md"
+    why: >
+      _vision/ defines the northstar the project aims towards, written as a
+      book. index.md is the table of contents; a chapter not linked from it is
+      invisible and effectively not part of the vision.
+    in: ./_vision
+    required_files: index.md
+    allowed_filetypes: .md
+    filename_casing: kebab-case
+    referenced_in: ./_vision/index.md
+    except: ./_vision/index.md
+
+  - henxel: "_plans holds kebab-case markdown plans"
+    why: >
+      _plans/ holds written plans for work that has been decided. Undecided
+      ideas belong in _todo.md or _vision/, not here.
+    in: ./_plans
+    required_files: index.md
+    allowed_filetypes: .md
+    filename_casing: kebab-case
+"""
+
+_AGENTIC_SEEDS = {
+    "_todo.md": (
+        "# Parking lot\n\n"
+        "Tasks that surface mid-work but fall outside its scope land here instead of\n"
+        "derailing the task at hand.\n"
+    ),
+    "_vision/index.md": (
+        "# Vision\n\n"
+        "The northstar this project aims towards, written as a book. Every chapter is\n"
+        "listed here — an unlisted chapter is not part of the vision.\n\n"
+        "## Chapters\n\n"
+        "* [Northstar](northstar.md) — what we are building and why\n"
+    ),
+    "_vision/northstar.md": (
+        "# Northstar\n\nDescribe the future this project exists to bring about.\n"
+    ),
+    "_plans/index.md": (
+        "# Plans\n\n"
+        "Written plans for work that has been decided — one kebab-case markdown file\n"
+        "per plan. Undecided ideas belong in _todo.md or _vision/.\n"
+    ),
+}
+
+
+def _ensure_temp_gitignored(root: Path) -> bool:
+    """Append `_temp/` to .gitignore (creating it if needed); never rewrite what's there."""
+    gi = root / ".gitignore"
+    text = gi.read_text(encoding="utf-8") if gi.exists() else ""
+    if {"_temp", "_temp/"} & {line.strip() for line in text.splitlines()}:
+        return False
+    joiner = "" if not text or text.endswith("\n") else "\n"
+    gi.write_text(text + joiner + "_temp/\n", encoding="utf-8")
+    return True
+
+
 def wiki_candidates(root: Path | str) -> list[tuple[str, int]]:
     """Top-level folders dense enough in markdown to look like an existing wiki."""
     out = []
@@ -295,6 +375,19 @@ def _okf_seeds(wiki: str) -> dict[str, str]:
     }
 
 
+def _write_seeds(root: Path, seeds: dict[str, str]) -> list[str]:
+    """Write seed files, skipping any that exist — additive only, never overwrite."""
+    written = []
+    for rel, content in seeds.items():
+        path = root / rel
+        if path.exists():
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        written.append(rel)
+    return written
+
+
 def detect_project(root: Path | str) -> str:
     root = Path(root)
     if (root / "pyproject.toml").exists() or (root / "setup.py").exists() or (root / "setup.cfg").exists():
@@ -327,10 +420,11 @@ def init(
 
     wiki = mode = None
     if template:
+        report["template"] = template
+    if template == "okf-llm-wiki":
         wiki = resolve_wiki_dir(root, wiki_dir, ask=ask)
         occupied = (root / wiki).is_dir() and any(p.is_file() for p in (root / wiki).rglob("*"))
         mode = "governing" if occupied else "scaffolded"
-        report["template"] = template
         report["wiki"] = (mode, wiki)
 
     cfg_path = root / "henxels.yaml"
@@ -342,17 +436,23 @@ def init(
         report["contract"] = ("exists", str(cfg_path)) if cfg_path.exists() and not force else ("planned", kind)
         return report
 
-    fragment = _okf_fragment(wiki, warn=(mode == "governing")) if template else ""
+    if template == "okf-llm-wiki":
+        fragment = _okf_fragment(wiki, warn=(mode == "governing"))
+    elif template == "agentic-project":
+        fragment = _AGENTIC
+    else:
+        fragment = ""
     if cfg_path.exists() and not force:
         report["contract"] = ("exists", str(cfg_path))
         if template:
             report["fragment"] = fragment  # paste-able: never edit an existing contract
     else:
-        body = _HEADER + (_OKF_SETTINGS if template else _SETTINGS) + _CONTRACTS.get(kind, _GENERIC) + fragment
+        settings = _OKF_SETTINGS if template == "okf-llm-wiki" else _SETTINGS
+        body = _HEADER + settings + _CONTRACTS.get(kind, _GENERIC) + fragment
         cfg_path.write_text(body, encoding="utf-8")
         report["contract"] = ("created", kind)
 
-    if template:
+    if template == "okf-llm-wiki":
         checks_path = root / "henxels_checks.py"
         if checks_path.exists():
             report["checks_file"] = ("exists", "henxels_checks.py")
@@ -360,15 +460,13 @@ def init(
             checks_path.write_text(_OKF_CHECKS_PY, encoding="utf-8")
             report["checks_file"] = ("created", "henxels_checks.py")
 
-    if template and mode == "scaffolded" and report["contract"][0] == "created":
-        written = []
-        for rel, content in _okf_seeds(wiki).items():
-            path = root / rel
-            if path.exists():
-                continue  # additive only — never overwrite wiki content
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content, encoding="utf-8")
-            written.append(rel)
+    if template == "okf-llm-wiki" and mode == "scaffolded" and report["contract"][0] == "created":
+        report["seeds"] = _write_seeds(root, _okf_seeds(wiki))
+
+    if template == "agentic-project" and report["contract"][0] == "created":
+        written = _write_seeds(root, _AGENTIC_SEEDS)
+        if _ensure_temp_gitignored(root):
+            written.append(".gitignore")
         report["seeds"] = written
 
     # Local schema copy → editor autocomplete works offline / in private repos.

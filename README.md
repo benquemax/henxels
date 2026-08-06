@@ -115,6 +115,12 @@ Building an **LLM wiki**? `henxels init --template okf-llm-wiki` sets up an
 [Open Knowledge Format](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md)
 wiki instead — seeded from scratch or governing the one you already have.
 
+Starting an **agent-driven project**? `henxels init --template agentic-project` seeds
+[the working folders agents lean on](https://github.com/benquemax/henxels/blob/main/docs/agentic-project-starter.md)
+— `_todo.md` (parking lot), `_temp/` (gitignored scratch), `_vision/` (the northstar,
+written as a book), `_plans/` (decided work) — plus the henxels that keep them honest,
+and a repo-wide no-secrets rule.
+
 **Pure JS repo, allergic to Python?** `npm i -g henxels` is all you need. On first run
 the launcher fetches the official [uv](https://docs.astral.sh/uv/) binary
 (checksum-pinned), uv provisions Python by itself, and the engine version always
@@ -219,6 +225,7 @@ The README is the tour; the deeper guides live in
 - [Guards and bless](https://github.com/benquemax/henxels/blob/main/docs/guards-and-bless.md) — how the protections work.
 - [Agent integrations](https://github.com/benquemax/henxels/blob/main/docs/agent-integrations.md) — the AGENTS.md digest and harness hooks.
 - [Enforcing OKF](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md) — a worked contract for the Open Knowledge Format.
+- [The agentic project starter](https://github.com/benquemax/henxels/blob/main/docs/agentic-project-starter.md) — `_todo.md`, `_temp/`, `_vision/`, and `_plans/` for agent-driven work.
 - [Upgrading](https://github.com/benquemax/henxels/blob/main/docs/upgrading.md) — the version nag, refreshing local files, schema evolution.
 
 ---

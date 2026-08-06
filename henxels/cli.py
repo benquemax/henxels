@@ -55,8 +55,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     pi.add_argument("--no-digest", action="store_true")
     pi.add_argument("--force", action="store_true")
-    pi.add_argument("--template", choices=["okf-llm-wiki"], default=None,
-                    help="start from a use-case template (okf-llm-wiki: an Open Knowledge Format wiki)")
+    pi.add_argument("--template", choices=["okf-llm-wiki", "agentic-project"], default=None,
+                    help="start from a use-case template (okf-llm-wiki: an Open Knowledge Format wiki; "
+                         "agentic-project: _todo.md, _temp/, _vision/, _plans/ for agent-driven work)")
     pi.add_argument("--wiki-dir", default=None,
                     help="folder the okf-llm-wiki template governs (default: wiki/)")
     pi.add_argument("--dry-run", action="store_true", help="show what init would do, write nothing")
@@ -292,7 +293,7 @@ def cmd_init(args) -> int:
 
     # On a TTY an ambiguous wiki location becomes a question; anywhere else it becomes
     # an instructive error — same decision, two skins.
-    ask = _ask_wiki_dir if (args.template and not args.wiki_dir and _tty()) else None
+    ask = _ask_wiki_dir if (args.template == "okf-llm-wiki" and not args.wiki_dir and _tty()) else None
     try:
         report = init(
             root,
@@ -322,6 +323,8 @@ def cmd_init(args) -> int:
                 print(f"  • scaffold a fresh OKF wiki at {wiki}/ (index, starter concept, update log)")
             else:
                 print(f"  • govern the existing wiki at {wiki}/ with rules starting at `level: warn`")
+        elif report.get("template") == "agentic-project":
+            print("  • seed _todo.md, _vision/, _plans/ and gitignore _temp/")
         return 0
 
     state, info = report["contract"]
@@ -331,7 +334,7 @@ def cmd_init(args) -> int:
     else:
         print("• henxels.yaml already exists — left as-is (use --force to replace)")
         if report.get("fragment"):
-            print("    Paste the okf-llm-wiki henxels into it yourself (your rules stay yours):")
+            print(f"    Paste the {report['template']} henxels into it yourself (your rules stay yours):")
             print(report["fragment"])
 
     if report.get("wiki"):
@@ -340,6 +343,8 @@ def cmd_init(args) -> int:
             print(f"✓ wiki: scaffolded {wiki}/ (index, starter concept, update log)")
         elif mode == "governing":
             print(f"✓ wiki: governing existing {wiki}/ — wiki rules start at `level: warn`")
+    elif report.get("template") == "agentic-project" and report.get("seeds"):
+        print("✓ seeded _todo.md, _vision/, _plans/ — and gitignored _temp/")
     checks_file = report.get("checks_file")
     if checks_file:
         mark, verb = ("✓", "created") if checks_file[0] == "created" else ("•", "already exists — kept")
