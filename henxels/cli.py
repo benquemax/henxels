@@ -197,7 +197,9 @@ def cmd_check(args) -> int:
     if sim:
         from henxels.similarity import warn_similar
 
-        findings.extend(warn_similar(sim, root, files))
+        # Deep (all-pairs difflib) only when candidates are a changed subset;
+        # a whole-repo scan uses the line-sharing shortlist instead of O(N²).
+        findings.extend(warn_similar(sim, root, files, deep=staged_mode or bool(args.paths)))
 
     large = settings.large_files(contract)
     if large:

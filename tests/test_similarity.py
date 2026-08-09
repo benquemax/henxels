@@ -66,6 +66,77 @@ def test_bulk_import_is_summarised_not_dumped(git_repo):
     assert not any(f.is_block for f in findings)
 
 
+def test_exact_duplicate_scores_full_similarity(git_repo):
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "copy.py").write_text(BODY + "\n", encoding="utf-8")
+
+    dups = find_duplicates(git_repo, ["copy.py"], threshold=0.85)
+    assert dups == [("copy.py", "original.py", 1.0)]
+
+
+def test_unrelated_files_do_not_match(git_repo):
+    # Same language, same alphabet, no shared lines → not similar. (Guards
+    # against char-frequency metrics that score all same-language files alike.)
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    other = "\n".join(f"def helper_{i}(x):\n    return x - {i}" for i in range(30))
+    (git_repo / "unrelated.py").write_text(other + "\n", encoding="utf-8")
+
+    assert find_duplicates(git_repo, ["unrelated.py"], threshold=0.85) == []
+
+
+def test_deep_scan_catches_rewrite_sharing_no_lines(git_repo):
+    # Docs re-written from scratch about the same thing share vocabulary and
+    # structure but rarely a single identical line. A changed-file (deep) scan
+    # must still catch that; the whole-repo (fast) scan explicitly does not.
+    lines = [f"The endpoint /api/v1/resource_{i} returns a json object with id {i}." for i in range(40)]
+    (git_repo / "api.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    rewrite = [li.replace("returns a", "always returns a") for li in lines]  # no line survives
+    (git_repo / "api-docs.md").write_text("\n".join(rewrite) + "\n", encoding="utf-8")
+
+    assert find_duplicates(git_repo, ["api-docs.md"], threshold=0.85)  # deep is the default
+    assert find_duplicates(git_repo, ["api-docs.md"], threshold=0.85, deep=False) == []
+
+
+def test_whole_corpus_scan_is_fast(git_repo):
+    # 300 mutually-dissimilar files, every file both candidate and corpus —
+    # the `check --all` shape that used to be O(N²) pairwise diffs (minutes).
+    import time
+
+    names = []
+    for i in range(300):
+        name = f"file_{i}.py"
+        body = "\n".join(f"def fn_{i}_{j}():\n    return {i} * {j}" for j in range(40))
+        (git_repo / name).write_text(body + "\n", encoding="utf-8")
+        names.append(name)
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+
+    start = time.perf_counter()
+    dups = find_duplicates(git_repo, names, threshold=0.85, deep=False)
+    assert time.perf_counter() - start < 5.0
+    assert dups == []
+
+
+def test_low_threshold_survives_length_difference(git_repo):
+    # Guards the pre-filters against threshold-blind constants: at above=0.7 a
+    # 100-line file truncated to 62 lines (ratio ≈ 0.77) must still surface,
+    # even though the lengths differ by ~60% relative to the shorter file.
+    lines = [f"some meaningful line number {i}" for i in range(100)]
+    (git_repo / "original.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "truncated.txt").write_text("\n".join(lines[:62]) + "\n", encoding="utf-8")
+
+    dups = find_duplicates(git_repo, ["truncated.txt"], threshold=0.7)
+    assert dups and dups[0][1] == "original.txt"
+
+
 def test_cap_is_not_applied_below_the_limit(git_repo):
     (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
     _git(git_repo, "add", ".")

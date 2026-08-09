@@ -41,6 +41,17 @@ Warns (never blocks) when a changed file is a near-copy of a committed one — t
 anti-scatter nudge that pushes an agent to update an existing file instead of cloning it.
 `above` is the similarity ratio (0–1); `ignore` is a list of globs to skip.
 
+**Changed-file scans go deep**: every staged (or explicitly listed) file is fully
+diffed against the whole committed corpus, so even a doc re-written from scratch
+about the same topic — same vocabulary, not one shared line — is caught at the
+moment it's committed. That cost is proportional to the *changed* files, so it
+stays cheap. **Whole-repo scans** (`check --all`, the push gate) would be O(N²)
+minutes at that depth, so they instead work the way git's rename/copy detection
+does: a cheap pass over identical (whitespace-trimmed) lines shortlists candidate
+pairs, and only the shortlist is diffed. Its blind spot — pairs sharing almost no
+whole lines — is exactly what the deep scan already warned about when those files
+were committed.
+
 `at_most` (default 20) caps how many pairs are listed before the rest collapse into a
 single count. Importing an archive or a vendored tree can make hundreds of files resemble
 each other, and a warning nobody can read is a warning nobody reads. If a whole folder is
