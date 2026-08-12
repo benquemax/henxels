@@ -19,7 +19,11 @@ DEFAULT_TTL = 600  # seconds — a bless is a *recent* conscious act, not a stan
 
 
 def _store_dir(root: Path | str) -> Path:
-    return Path(root) / ".git" / "henxels"
+    # The *private* git dir, so a bless in one worktree never leaks into another.
+    from henxels.engine.gitinfo import git_private_dir
+
+    private = git_private_dir(root)
+    return (private if private is not None else Path(root) / ".git") / "henxels"
 
 
 def _token_path(root: Path | str, action: str) -> Path:

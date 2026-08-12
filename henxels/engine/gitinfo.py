@@ -95,6 +95,34 @@ def head_sha(root: Path | str) -> str | None:
     return res.stdout.strip() or None
 
 
+def _rev_parse_path(root: Path | str, flag: str) -> Path | None:
+    """A path from ``git rev-parse <flag>``, absolutized against ``root``.
+
+    None when git is unavailable or ``root`` isn't a repo — callers fall back
+    to the classic ``<root>/.git/...`` layout.
+    """
+    res = _run(["git", "rev-parse", flag], root)
+    if res is None or res.returncode != 0:
+        return None
+    out = res.stdout.strip()
+    if not out:
+        return None
+    path = Path(out)
+    return path if path.is_absolute() else Path(root) / path
+
+
+def git_common_dir(root: Path | str) -> Path | None:
+    """The shared git dir — the main repo's ``.git`` even from a linked worktree,
+    where ``<root>/.git`` is just a pointer file. Hooks live here."""
+    return _rev_parse_path(root, "--git-common-dir")
+
+
+def git_private_dir(root: Path | str) -> Path | None:
+    """This checkout's own git dir (``.git/worktrees/<name>`` in a linked
+    worktree). Worktree-local state like bless tokens lives here."""
+    return _rev_parse_path(root, "--git-dir")
+
+
 def configured_hooks_path(root: Path | str) -> str | None:
     """The raw ``core.hooksPath`` config value, or None if unset.
 
@@ -135,5 +163,6 @@ def shadowing_hooks_path(root: Path | str) -> str | None:
     if configured is None:
         return None
     effective = effective_hooks_dir(root)
-    default = (Path(root) / ".git" / "hooks").resolve()
+    common = git_common_dir(root)
+    default = ((common if common is not None else Path(root) / ".git") / "hooks").resolve()
     return configured if (effective is not None and effective != default) else None

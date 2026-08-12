@@ -71,7 +71,14 @@ def _script(subcommand: str, hook: str) -> str:
 
 
 def hooks_dir(root: Path | str) -> Path:
-    return Path(root) / ".git" / "hooks"
+    """Where hooks install: the *common* git dir's hooks, so a linked worktree
+    (whose ``.git`` is a pointer file) installs into the shared main-repo hooks.
+    Falls back to the classic path when git can't answer, so the no-git case
+    still reports cleanly."""
+    from henxels.engine.gitinfo import git_common_dir
+
+    common = git_common_dir(root)
+    return (common / "hooks") if common is not None else Path(root) / ".git" / "hooks"
 
 
 def install_hooks(root: Path | str, force: bool = False, adopt: bool = False) -> dict[str, str]:

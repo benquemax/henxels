@@ -53,6 +53,10 @@ asks rather than guessing — the error contains the exact command to rerun. Add
 > core.hooksPath`), or call `henxels _precommit` / `henxels _prepush` from your existing
 > hooks.
 
+> **Working in a `git worktree`?** Just works. Hooks install into the shared main-repo
+> hooks dir (git resolves hooks from there for every worktree), so one `henxels init`
+> covers all your worktrees; bless tokens stay private to the worktree that minted them.
+
 Another tool may have claimed the hook file first:
 
 > **Something else already owns `.git/hooks/pre-push` (git-lfs, a hand-rolled script)?**
