@@ -246,7 +246,7 @@ _AGENTIC = """
       _temp/ is free scratch space — use it for anything temporary, nothing in
       it is ever committed.
     in: .
-    run_before_commit: git check-ignore -q _temp
+    run_before_commit: git check-ignore -q _temp/
 
   - henxel: "_vision is a book: kebab-case markdown chapters, every page linked from index.md"
     why: >

@@ -6,8 +6,9 @@ work) — plus the henxels that keep them honest. Green at birth, additive only.
 """
 
 from henxels.cli import main
+from henxels.commands import run_commands
 from henxels.contract import apply_imports, load_contract
-from henxels.runner import run_contract
+from henxels.runner import run_contract, stage_commands
 from henxels.scaffold import init
 from henxels.statements.registry import all_statements
 
@@ -28,6 +29,34 @@ def test_scaffold_empty_repo_is_green_at_birth(tmp_path):
     for seed in SEEDS:
         assert (tmp_path / seed).is_file(), f"missing seed {seed}"
     assert _findings(tmp_path) == []
+
+
+def test_temp_gate_passes_without_the_directory_present(git_repo):
+    """The _temp gate must hold in a fresh clone, where _temp/ does not exist.
+
+    `.gitignore` carries `_temp/` — a directory-only pattern. `git check-ignore
+    _temp` (no slash) only matches when that directory happens to exist on disk,
+    and an empty ignored directory is never in a repo, so every fresh clone
+    started with a failing pre-commit hook.
+
+    run_contract does not catch this: run_before_commit is a pre_commit-stage
+    statement, so the default check never executes it.
+    """
+    init(git_repo, install_git_hooks=False, template="agentic-project")
+    assert not (git_repo / "_temp").exists()
+
+    contract = load_contract(git_repo / "henxels.yaml")
+    commands = stage_commands(contract, "pre_commit")
+    assert any("_temp" in c for c in commands), "the _temp gate vanished from the template"
+    assert run_commands(commands, "pre_commit", git_repo) == []
+
+
+def test_temp_gate_still_passes_once_the_directory_exists(git_repo):
+    init(git_repo, install_git_hooks=False, template="agentic-project")
+    (git_repo / "_temp").mkdir()
+    (git_repo / "_temp" / "scratch.txt").write_text("x", encoding="utf-8")
+    contract = load_contract(git_repo / "henxels.yaml")
+    assert run_commands(stage_commands(contract, "pre_commit"), "pre_commit", git_repo) == []
 
 
 def test_temp_is_gitignored(tmp_path):
