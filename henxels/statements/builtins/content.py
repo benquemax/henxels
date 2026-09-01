@@ -178,22 +178,31 @@ def markdown_lint(scope):
         # `henxels doctor` surfaces it as a setup nudge instead.
         return []
 
+    # One invocation for the whole set — a subprocess per file costs ~0.3s of
+    # interpreter startup each, minutes on a docs-heavy repo. pymarkdown reports
+    # per-file `path:line:col:rule:message` lines, so a single scan is enough.
+    # Front-matter parsing is enabled (so YAML `---` isn't read as a setext
+    # heading); rule toggles come from the repo's pymarkdown config
+    # ([tool.pymarkdown]). Relative paths + cwd keep the reported paths relative.
     issues = []
-    for f in md_files:
-        # Enable front-matter parsing (so YAML `---` isn't read as a setext heading);
-        # rule toggles come from the repo's pymarkdown config ([tool.pymarkdown]).
-        result = subprocess.run(
-            [*cmd, "--set", "extensions.front-matter.enabled=$!True", "scan", str(scope.root / f)],
-            capture_output=True,
-            text=True,
-            cwd=str(scope.root),
-        )
-        if result.returncode == 0:
-            continue
+    result = subprocess.run(
+        [*cmd, "--set", "extensions.front-matter.enabled=$!True", "scan", *md_files],
+        capture_output=True,
+        text=True,
+        cwd=str(scope.root),
+    )
+    if result.returncode != 0:
+        root = Path(scope.root).resolve()
         for line in result.stdout.splitlines():
             parts = line.split(":", 4)
             if len(parts) >= 5:
-                issues.append(f"{f} — {parts[3].strip()}: {parts[4].strip()} (line {parts[1]})")
+                path = Path(parts[0])  # pymarkdown resolves paths to absolute
+                if path.is_absolute():
+                    try:
+                        path = path.relative_to(root)
+                    except ValueError:
+                        pass
+                issues.append(f"{path} — {parts[3].strip()}: {parts[4].strip()} (line {parts[1]})")
     return issues
 
 

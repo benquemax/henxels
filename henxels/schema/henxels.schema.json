@@ -48,7 +48,12 @@
               "additionalProperties": false,
               "properties": {
                 "above": { "type": "number", "minimum": 0, "maximum": 1 },
-                "ignore": { "type": "array", "items": { "type": "string" } }
+                "ignore": { "type": "array", "items": { "type": "string" } },
+                "at_most": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Show at most this many duplicate warnings, then a count (default 20). Keeps a bulk import from burying the output."
+                }
               }
             }
           ]

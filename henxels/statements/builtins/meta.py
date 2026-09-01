@@ -22,9 +22,14 @@ def well_formed_statements(scope):
     contributions, so this keeps them merge-ready.
     """
     root = scope.root.resolve()
+    # Repo-wide question, so read the repo — not scope.all_files, which in a git repo
+    # is only the *staged* files. Trusting it made every statement look untested
+    # whenever the commit happened not to stage its test.
+    from henxels.engine.discover import discover
+
     test_text = "\n".join(
         scope.read_text(f) or ""
-        for f in scope.all_files
+        for f in discover(root)
         if f.rsplit("/", 1)[-1].startswith("test_") or f.startswith("tests/") or "/tests/" in f
     )
     violations = []

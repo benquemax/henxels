@@ -21,5 +21,7 @@ def test_delete_protection_forms():
 def test_similarity_forms():
     assert settings.similarity(Contract()) is None
     got = settings.similarity(Contract(settings={"warn_about_similar_files": {"above": 0.9, "ignore": ["x"]}}))
-    assert got == {"above": 0.9, "ignore": ["x"]}
+    assert got == {"above": 0.9, "ignore": ["x"], "at_most": 20}
     assert settings.similarity(Contract(settings={"warn_about_similar_files": True}))["above"] == 0.85
+    got = settings.similarity(Contract(settings={"warn_about_similar_files": {"at_most": 3}}))
+    assert got["at_most"] == 3

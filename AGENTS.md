@@ -89,6 +89,7 @@ tests/              one module per unit
   feature area, and a README teaser linking to it. A doc that lies is worse than no doc.
 
 <!-- henxels:begin -->
+
 ## The contract (henxels)
 
 _Auto-generated from `henxels.yaml` by `henxels sync`. Do not edit by hand._

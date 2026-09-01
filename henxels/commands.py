@@ -6,16 +6,23 @@ finding. This keeps the test/lint gate in the contract — the single source of 
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
 from henxels.findings import BLOCK, Finding
 
+# Git exports these to hook processes; a gate command that shells out to git in
+# any other directory would silently operate on the parent repo instead. Gates
+# run from the repo root, so a clean git context is always the right one.
+_GIT_HOOK_VARS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_PREFIX", "GIT_COMMON_DIR")
+
 
 def run_commands(commands: list[str], stage: str, root: Path | str) -> list[Finding]:
+    env = {k: v for k, v in os.environ.items() if k not in _GIT_HOOK_VARS}
     findings: list[Finding] = []
     for command in commands:
-        result = subprocess.run(command, shell=True, cwd=str(root))
+        result = subprocess.run(command, shell=True, cwd=str(root), env=env)
         if result.returncode != 0:
             findings.append(
                 Finding(

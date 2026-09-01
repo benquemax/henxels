@@ -1,6 +1,6 @@
 {
   "name": "henxels",
-  "version": "0.8.0",
+  "version": "0.11.2",
   "description": "A repo-level harness for coding agents — file-level constraints that keep every agent true to your repo's structure. No Python required: the launcher bootstraps its own engine (official uv, checksum-pinned) on first run.",
   "scripts": {
     "prepack": "node -e \"require('fs').copyFileSync('../README.md','README.md')\""

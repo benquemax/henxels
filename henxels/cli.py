@@ -48,10 +48,16 @@ def main(argv: list[str] | None = None) -> int:
 
     pi = sub.add_parser("init", help="scaffold the contract, hooks, and AGENTS.md digest")
     pi.add_argument("--no-hooks", action="store_true")
+    pi.add_argument(
+        "--adopt-hooks",
+        action="store_true",
+        help="move an existing foreign hook to <hook>.local and chain it after the contract",
+    )
     pi.add_argument("--no-digest", action="store_true")
     pi.add_argument("--force", action="store_true")
-    pi.add_argument("--template", choices=["okf-llm-wiki"], default=None,
-                    help="start from a use-case template (okf-llm-wiki: an Open Knowledge Format wiki)")
+    pi.add_argument("--template", choices=["okf-llm-wiki", "agentic-project"], default=None,
+                    help="start from a use-case template (okf-llm-wiki: an Open Knowledge Format wiki; "
+                         "agentic-project: _todo.md, _temp/, _vision/, _plans/ for agent-driven work)")
     pi.add_argument("--wiki-dir", default=None,
                     help="folder the okf-llm-wiki template governs (default: wiki/)")
     pi.add_argument("--dry-run", action="store_true", help="show what init would do, write nothing")
@@ -191,7 +197,9 @@ def cmd_check(args) -> int:
     if sim:
         from henxels.similarity import warn_similar
 
-        findings.extend(warn_similar(sim, root, files))
+        # Deep (all-pairs difflib) only when candidates are a changed subset;
+        # a whole-repo scan uses the line-sharing shortlist instead of O(N²).
+        findings.extend(warn_similar(sim, root, files, deep=staged_mode or bool(args.paths)))
 
     large = settings.large_files(contract)
     if large:
@@ -287,11 +295,12 @@ def cmd_init(args) -> int:
 
     # On a TTY an ambiguous wiki location becomes a question; anywhere else it becomes
     # an instructive error — same decision, two skins.
-    ask = _ask_wiki_dir if (args.template and not args.wiki_dir and _tty()) else None
+    ask = _ask_wiki_dir if (args.template == "okf-llm-wiki" and not args.wiki_dir and _tty()) else None
     try:
         report = init(
             root,
             install_git_hooks=not args.no_hooks,
+            adopt_hooks=args.adopt_hooks,
             write_digest=not args.no_digest,
             force=args.force,
             template=args.template,
@@ -316,6 +325,8 @@ def cmd_init(args) -> int:
                 print(f"  • scaffold a fresh OKF wiki at {wiki}/ (index, starter concept, update log)")
             else:
                 print(f"  • govern the existing wiki at {wiki}/ with rules starting at `level: warn`")
+        elif report.get("template") == "agentic-project":
+            print("  • seed _todo.md, _vision/, _plans/ and gitignore _temp/")
         return 0
 
     state, info = report["contract"]
@@ -325,7 +336,7 @@ def cmd_init(args) -> int:
     else:
         print("• henxels.yaml already exists — left as-is (use --force to replace)")
         if report.get("fragment"):
-            print("    Paste the okf-llm-wiki henxels into it yourself (your rules stay yours):")
+            print(f"    Paste the {report['template']} henxels into it yourself (your rules stay yours):")
             print(report["fragment"])
 
     if report.get("wiki"):
@@ -334,6 +345,8 @@ def cmd_init(args) -> int:
             print(f"✓ wiki: scaffolded {wiki}/ (index, starter concept, update log)")
         elif mode == "governing":
             print(f"✓ wiki: governing existing {wiki}/ — wiki rules start at `level: warn`")
+    elif report.get("template") == "agentic-project" and report.get("seeds"):
+        print("✓ seeded _todo.md, _vision/, _plans/ — and gitignored _temp/")
     checks_file = report.get("checks_file")
     if checks_file:
         mark, verb = ("✓", "created") if checks_file[0] == "created" else ("•", "already exists — kept")
@@ -343,8 +356,14 @@ def cmd_init(args) -> int:
         print("• git hooks: skipped (not a git repo, or --no-hooks)")
     else:
         for hook, outcome in hooks.items():
-            mark = "✓" if outcome in ("installed", "updated") else "•"
+            mark = "✓" if outcome in ("installed", "updated", "adopted") else "•"
             print(f"{mark} git hook {hook}: {outcome}")
+            if outcome == "adopted":
+                print(f"    your previous hook is now {hook}.local and runs after the contract")
+            elif outcome == "skipped:foreign":
+                print(f"    something else owns .git/hooks/{hook} (git-lfs, husky, …).")
+                print("    Run `henxels init --adopt-hooks` to keep both: yours moves to")
+                print(f"    {hook}.local and is chained after the contract.")
         shadowed = report.get("hooks_shadowed")
         if shadowed:
             print(f"⚠ git hooks won't fire: core.hooksPath={shadowed} shadows .git/hooks.")

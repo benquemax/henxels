@@ -21,8 +21,8 @@ jobs:
     permissions:
       id-token: write   # PyPI Trusted Publishing (OIDC)
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
       - name: Build sdist + wheel
         run: uv build
       - name: Publish to PyPI
@@ -31,8 +31,8 @@ jobs:
   npm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
