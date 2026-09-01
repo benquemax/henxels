@@ -36,19 +36,33 @@ def delete_protection(contract: Contract) -> dict | None:
 
 
 def similarity(contract: Contract) -> dict | None:
-    """Return {'above': float, 'ignore': [...], 'at_most': int} when similarity warnings are on."""
+    """Return {'above', 'ignore', 'at_most', 'budget'} when similarity warnings are on."""
     raw = contract.settings.get("warn_about_similar_files")
     if not raw:
         return None
     if raw is True:
-        return {"above": DEFAULT_SIMILARITY, "ignore": [], "at_most": DEFAULT_AT_MOST}
+        return {"above": DEFAULT_SIMILARITY, "ignore": [], "at_most": DEFAULT_AT_MOST, "budget": None}
     if isinstance(raw, dict):
         return {
             "above": float(raw.get("above", DEFAULT_SIMILARITY)),
             "ignore": raw.get("ignore", []) or [],
             "at_most": int(raw.get("at_most", DEFAULT_AT_MOST)),
+            "budget": _budget_seconds(raw.get("budget")),
         }
     return None
+
+
+def _budget_seconds(raw) -> float | None:
+    """``budget`` is seconds: a number, or a string with an s/m/h suffix ("30s", "5m")."""
+    if raw is None:
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    text = str(raw).strip().lower()
+    units = {"s": 1.0, "m": 60.0, "h": 3600.0}
+    if text and text[-1] in units:
+        return float(text[:-1]) * units[text[-1]]
+    return float(text)
 
 
 def large_files(contract: Contract) -> dict | None:

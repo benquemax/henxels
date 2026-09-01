@@ -21,7 +21,21 @@ def test_delete_protection_forms():
 def test_similarity_forms():
     assert settings.similarity(Contract()) is None
     got = settings.similarity(Contract(settings={"warn_about_similar_files": {"above": 0.9, "ignore": ["x"]}}))
-    assert got == {"above": 0.9, "ignore": ["x"], "at_most": 20}
+    assert got == {"above": 0.9, "ignore": ["x"], "at_most": 20, "budget": None}
     assert settings.similarity(Contract(settings={"warn_about_similar_files": True}))["above"] == 0.85
     got = settings.similarity(Contract(settings={"warn_about_similar_files": {"at_most": 3}}))
     assert got["at_most"] == 3
+
+
+def test_similarity_budget_forms():
+    from henxels import settings
+
+    assert settings.similarity(Contract(settings={"warn_about_similar_files": True}))["budget"] is None
+    got = settings.similarity(Contract(settings={"warn_about_similar_files": {"budget": 30}}))
+    assert got["budget"] == 30.0
+    got = settings.similarity(Contract(settings={"warn_about_similar_files": {"budget": "30s"}}))
+    assert got["budget"] == 30.0
+    got = settings.similarity(Contract(settings={"warn_about_similar_files": {"budget": "5m"}}))
+    assert got["budget"] == 300.0
+    got = settings.similarity(Contract(settings={"warn_about_similar_files": {"budget": "1h"}}))
+    assert got["budget"] == 3600.0

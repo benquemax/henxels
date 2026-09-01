@@ -41,16 +41,28 @@ Warns (never blocks) when a changed file is a near-copy of a committed one — t
 anti-scatter nudge that pushes an agent to update an existing file instead of cloning it.
 `above` is the similarity ratio (0–1); `ignore` is a list of globs to skip.
 
-**Changed-file scans go deep**: every staged (or explicitly listed) file is fully
-diffed against the whole committed corpus, so even a doc re-written from scratch
-about the same topic — same vocabulary, not one shared line — is caught at the
-moment it's committed. That cost is proportional to the *changed* files, so it
-stays cheap. **Whole-repo scans** (`check --all`, the push gate) would be O(N²)
-minutes at that depth, so they instead work the way git's rename/copy detection
-does: a cheap pass over identical (whitespace-trimmed) lines shortlists candidate
-pairs, and only the shortlist is diffed. Its blind spot — pairs sharing almost no
-whole lines — is exactly what the deep scan already warned about when those files
-were committed.
+**Changed-file scans go deep**: every staged (or explicitly listed) file is
+compared against the whole committed corpus, so even a doc re-written from
+scratch about the same topic — same vocabulary, not one shared line — is caught
+at the moment it's committed. **Whole-repo scans** (`check --all`, the push
+gate) would be O(N²) minutes at that depth, so they instead work the way git's
+rename/copy detection does: a cheap pass over identical (whitespace-trimmed)
+lines shortlists candidate pairs, and only the shortlist is diffed. Its blind
+spot — pairs sharing almost no whole lines — is exactly what the deep scan
+already warned about when those files were committed.
+
+Both depths stay fast because a warning needs *a* match, not the closest one:
+hopeless pairs are pruned by two cheap upper bounds (length, then character
+frequency), the most promising committed file is diffed first, and one hit ends
+the scan for that file. A commit of 98 generated near-copies against a
+150-file corpus drops from the better part of an hour to well under a second.
+
+The scan always runs to completion by default — a duplicate is worth knowing
+about even when the scan takes minutes. If you'd rather cap it (a huge repo, a
+hot pre-commit path), set `budget` to seconds (`30`), or `"30s"`, `"5m"`,
+`"1h"`. When the budget runs out you get the warnings found so far plus one
+more saying the results are partial; the durable fix is `ignore` globs for
+generated/data paths, which remove them from both sides of the comparison.
 
 `at_most` (default 20) caps how many pairs are listed before the rest collapse into a
 single count. Importing an archive or a vendored tree can make hundreds of files resemble

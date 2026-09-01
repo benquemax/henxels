@@ -146,3 +146,66 @@ def test_cap_is_not_applied_below_the_limit(git_repo):
     findings = warn_similar({"above": 0.85, "at_most": 5}, git_repo, ["copy.py"])
     assert len(findings) == 1
     assert "more" not in findings[0].details[0]
+# --- performance: the scan is complete, and fast because of the algorithm ---
+
+def _count_ratio_calls(monkeypatch):
+    import difflib
+
+    calls = {"n": 0}
+    original = difflib.SequenceMatcher.ratio
+
+    def counting(self):
+        calls["n"] += 1
+        return original(self)
+
+    monkeypatch.setattr(difflib.SequenceMatcher, "ratio", counting)
+    return calls
+
+
+def test_stops_at_first_match(git_repo, monkeypatch):
+    # A warning needs *a* match, not the closest one — one hit ends the scan
+    # for that candidate instead of diffing the whole corpus for an argmax.
+    for i in range(10):
+        (git_repo / f"gen_{i}.py").write_text(BODY + f"\n# rev {i}\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "copy.py").write_text(BODY + "\n# rev x\n", encoding="utf-8")
+
+    calls = _count_ratio_calls(monkeypatch)
+    dups = find_duplicates(git_repo, ["copy.py"], threshold=0.85)
+    assert dups and dups[0][2] >= 0.85
+    assert calls["n"] == 1
+
+
+def test_scan_is_complete_by_default(git_repo):
+    # No silent work caps: without an explicit budget every candidate is scanned.
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "copy.py").write_text(BODY + "\n", encoding="utf-8")
+
+    dups = find_duplicates(git_repo, ["copy.py"], threshold=0.85)
+    assert not dups.truncated
+
+
+def test_explicit_budget_flags_partial_results(git_repo):
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "copy.py").write_text(BODY + "\n", encoding="utf-8")
+
+    dups = find_duplicates(git_repo, ["copy.py"], threshold=0.85, budget_seconds=0)
+    assert list(dups) == []
+    assert dups.truncated
+
+
+def test_warn_similar_notes_exhausted_budget(git_repo):
+    (git_repo / "original.py").write_text(BODY + "\n", encoding="utf-8")
+    _git(git_repo, "add", ".")
+    _git(git_repo, "commit", "-q", "-m", "seed")
+    (git_repo / "copy.py").write_text(BODY + "\n", encoding="utf-8")
+
+    findings = warn_similar({"above": 0.85, "budget": 0}, git_repo, ["copy.py"])
+    assert len(findings) == 1 and not findings[0].is_block
+    assert "budget" in findings[0].details[0]
+    assert "ignore" in findings[0].details[0]
