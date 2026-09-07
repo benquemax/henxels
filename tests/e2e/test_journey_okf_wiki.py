@@ -40,36 +40,36 @@ def test_scaffold_journey_catches_every_violation_class(sandbox):
     assert sandbox.commit_all(repo, "adopt henxels + okf wiki").returncode == 0
 
     # A conforming concept sails through the hooks.
-    sandbox.write(repo, "wiki/customer-count.md", _concept("Customer count"))
-    _list_in_index(sandbox, repo, "wiki", "customer-count")
+    sandbox.write(repo, "_wiki/customer-count.md", _concept("Customer count"))
+    _list_in_index(sandbox, repo, "_wiki", "customer-count")
     ok = sandbox.commit_all(repo, "add customer-count")
     assert ok.returncode == 0, output_of(ok)
 
     # Missing type — the one OKF MUST.
-    sandbox.write(repo, "wiki/broken-concept.md",
+    sandbox.write(repo, "_wiki/broken-concept.md",
                   "---\ntitle: broken\ndescription: x.\ntimestamp: 2026-07-02\n---\n\n"
                   "See [the index](/index.md).\n")
-    _list_in_index(sandbox, repo, "wiki", "broken-concept")
+    _list_in_index(sandbox, repo, "_wiki", "broken-concept")
     blocked = sandbox.commit_all(repo, "missing type")
     assert blocked.returncode != 0
     assert "add frontmatter key 'type'" in output_of(blocked)
 
-    sandbox.write(repo, "wiki/broken-concept.md", _concept("Broken concept"))
+    sandbox.write(repo, "_wiki/broken-concept.md", _concept("Broken concept"))
     assert sandbox.commit_all(repo, "type added").returncode == 0
 
     # A dead bundle-absolute link.
-    sandbox.write(repo, "wiki/orders-metric.md",
+    sandbox.write(repo, "_wiki/orders-metric.md",
                   _concept("Orders metric", "Joins [orders](/tables/orders.md).\n"))
-    _list_in_index(sandbox, repo, "wiki", "orders-metric")
+    _list_in_index(sandbox, repo, "_wiki", "orders-metric")
     dead = sandbox.commit_all(repo, "dead link")
     assert dead.returncode != 0
     assert "dead link /tables/orders.md" in output_of(dead)
 
-    sandbox.write(repo, "wiki/orders-metric.md", _concept("Orders metric"))
+    sandbox.write(repo, "_wiki/orders-metric.md", _concept("Orders metric"))
     assert sandbox.commit_all(repo, "link removed").returncode == 0
 
     # Editing a concept without bumping its timestamp (diff-aware, commit-time only).
-    conventions = repo / "wiki/wiki-conventions.md"
+    conventions = repo / "_wiki/wiki-conventions.md"
     conventions.write_text(
         conventions.read_text(encoding="utf-8") + "\nRefined guidance.\n", encoding="utf-8"
     )
@@ -82,18 +82,18 @@ def test_scaffold_journey_catches_every_violation_class(sandbox):
     assert sandbox.commit_all(repo, "edit with bump").returncode == 0
 
     # A reserved file growing frontmatter.
-    sandbox.write(repo, "wiki/tables/index.md", "---\ntitle: Tables\n---\n\n# Tables\n")
+    sandbox.write(repo, "_wiki/tables/index.md", "---\ntitle: Tables\n---\n\n# Tables\n")
     reserved = sandbox.commit_all(repo, "frontmatter on index")
     assert reserved.returncode != 0
     assert "remove the frontmatter block" in output_of(reserved)
 
-    sandbox.write(repo, "wiki/tables/index.md", "# Tables\n")
+    sandbox.write(repo, "_wiki/tables/index.md", "# Tables\n")
     assert sandbox.commit_all(repo, "reserved file clean").returncode == 0
 
     # A near-duplicate concept: awareness beats blocking — commit passes, but warns.
-    near_copy = (repo / "wiki/customer-count.md").read_text(encoding="utf-8")
-    sandbox.write(repo, "wiki/customer-count-two.md", near_copy.replace("Customer count", "Customer count two"))
-    _list_in_index(sandbox, repo, "wiki", "customer-count-two")
+    near_copy = (repo / "_wiki/customer-count.md").read_text(encoding="utf-8")
+    sandbox.write(repo, "_wiki/customer-count-two.md", near_copy.replace("Customer count", "Customer count two"))
+    _list_in_index(sandbox, repo, "_wiki", "customer-count-two")
     dup = sandbox.commit_all(repo, "near duplicate")
     assert dup.returncode == 0, output_of(dup)
     assert "similar" in output_of(dup).lower()
@@ -101,6 +101,7 @@ def test_scaffold_journey_catches_every_violation_class(sandbox):
 
 def test_migrate_journey_warn_then_promote(sandbox):
     repo = sandbox.repo()
+    # A legacy wiki/ (pre-_wiki default) is adopted as is — the migration path never moves files.
     sandbox.write(repo, "wiki/notes.md", "Legacy knowledge. No frontmatter, no links.\n")
     assert sandbox.commit_all(repo, "pre-henxels history").returncode == 0
 

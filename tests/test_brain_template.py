@@ -8,6 +8,7 @@ brainpick's spec/85; this template is its scaffold. Green at birth, additive onl
 """
 
 import datetime
+import re
 
 from henxels.cli import main
 from henxels.contract import apply_imports, load_contract
@@ -243,7 +244,10 @@ def test_compose_with_detected_project_type(tmp_path):
     text = _read(tmp_path, "henxels.yaml")
     assert "snake_case" in text  # the python starter rode along
     assert "_brain" in text
-    assert text.count("henxels:") == 1 and text.count("settings:") == 1
+    # exactly one top-level henxels: / settings: block (requires_henxels: is not one)
+    assert len(re.findall(r"(?m)^henxels:", text)) == 1
+    assert len(re.findall(r"(?m)^settings:", text)) == 1
+    assert 'requires_henxels: ">=0.13"' in text  # max_files landed in 0.13
     assert _findings(tmp_path) == []
 
 
