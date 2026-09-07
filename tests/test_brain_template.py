@@ -231,6 +231,15 @@ def test_contract_rejects_a_skill_that_is_not_a_playbook(tmp_path):
     assert any("essay.md" in str(f) for f in _findings(tmp_path))
 
 
+def test_first_skill_pulls_before_reading(tmp_path):
+    """A brain is shared memory in Git: the skill's first instruction is to pull, and its
+    write side ends with push — so no agent reasons from a stale checkout."""
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    skill = _read(tmp_path, "_brain/skills/using-the-brain.md")
+    assert skill.index("pull the brain's latest version") < skill.index("## Reading")
+    assert "Commit and push" in skill
+
+
 def test_contract_rejects_a_sixth_memory_type(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
     (tmp_path / "_brain" / "ideas").mkdir()

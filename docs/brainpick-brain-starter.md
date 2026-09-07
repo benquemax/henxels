@@ -67,9 +67,12 @@ gitignored by the template.
 
 ## The first skill
 
-`skills/using-the-brain.md` is a playbook written for the agent: read the closest
-brain first, then `skills/`, then `knowledge/`, then `journals/`, and `raw/` only by
-grep to ground or to distil; roll the month; distil upward and
+`skills/using-the-brain.md` is a playbook written for the agent: **pull the brain's
+latest version before reading anything** (it is shared memory — others commit to it
+between sessions, and a stale checkout is knowledge the brain has already
+corrected); then read the closest brain first, then `skills/`, then `knowledge/`,
+then `journals/`, and `raw/` only by grep to ground or to distil; roll the month;
+distil upward, commit and push what you changed, and
 leave a pointer rather than a copy; ground every claim inline; treat the brain as
 *the best knowledge available at the moment, not the truth*. Its `description` is a
 trigger ("Use when…") and it carries `export: agent-skill`, so brainpick can hand it

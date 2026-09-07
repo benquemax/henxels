@@ -314,6 +314,15 @@ export: agent-skill
 the moment, not the truth**: everything in it is provisional, and your job
 when you notice a flaw is to fix the brain, not route around it.
 
+## First: pull
+
+**Before reading anything, pull the brain's latest version** (`git pull`
+in the repo that holds it — every brain, if several are mounted). A brain
+is shared memory: other agents and people commit to it between your
+sessions, and an answer built on a stale checkout is built on knowledge
+the brain has already corrected. Pull first, then read; if the pull brings
+changes, re-read before acting on what you remembered.
+
 ## Reading: most distilled first
 
 1. **The closest brain first.** If several brains are available (this
@@ -354,6 +363,9 @@ With brainpick: `brain_overview` first, then `brain_search`, then
 - **Reading a less distilled layer is a distillation opportunity.** If the
   answer was in the journal, ask whether it should now be knowledge.
 - **Bump `timestamp`** on every change; keep `type`, `title`, `description`.
+- **Commit and push what you changed** (the contract checks it on commit)
+  so the next reader's pull brings your version — memory that stays on one
+  machine is not shared memory.
 
 ## Several brains: subsidiarity
 
