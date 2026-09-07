@@ -18,6 +18,18 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
+def _packed_filename(stdout: str) -> str:
+    """The tarball name from `npm pack --json`, across npm's output-format change.
+
+    npm <= 10 emits a JSON array: [{"filename": "...", ...}]. npm >= 11 emits an
+    object keyed by package name: {"<pkg>": {"filename": "...", ...}}. Accept both
+    so the release gate isn't hostage to the runner's npm version."""
+    data = json.loads(stdout)
+    entries = list(data.values()) if isinstance(data, dict) else data
+    return entries[0]["filename"]
+
+
 pytestmark = [
     pytest.mark.packaging,
     pytest.mark.skipif(shutil.which("node") is None or shutil.which("npm") is None,
@@ -38,7 +50,7 @@ def _install_packed_tarball(sandbox) -> Path:
         cwd=staging / "npm", env_extra={"PATH": os.environ["PATH"]},
     )
     assert packed.returncode == 0, packed.stderr
-    tarball = sandbox.base / json.loads(packed.stdout)[0]["filename"]
+    tarball = sandbox.base / _packed_filename(packed.stdout)
 
     names = tarfile.open(tarball).getnames()
     for rel in ("package/bin/henxels.js", "package/bin/bootstrap.cjs",
