@@ -35,6 +35,18 @@ add your own in three lines.
 
 ---
 
+## Listen instead
+
+Five minutes, one voice: the drift problem, why a prompt is a request and a
+contract is a rule, guards and bless, and the one command that starts it.
+Synthesized from the transcript beside it — no human was recorded.
+
+**▶ [Play the episode (mp3, 5 min)](https://github.com/benquemax/henxels/blob/main/docs/assets/audio/henxels-episode.mp3)**
+· [direct link](https://raw.githubusercontent.com/benquemax/henxels/main/docs/assets/audio/henxels-episode.mp3)
+· [transcript](https://github.com/benquemax/henxels/blob/main/docs/assets/audio/henxels-episode.txt)
+
+---
+
 ## The contract reads like a whiteboard
 
 `henxels.yaml` is a list of rules. Each **henxel** is a sentence (which doubles as the

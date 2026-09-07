@@ -1,0 +1,43 @@
+Hi. This is a short episode about henxels. Suspenders for your repo.
+
+Let me start with the problem, because you have seen it.
+
+You give a coding agent a repository. A small, eager, easily distracted agent. And it does good work. It writes the right thing. And then it puts it in the wrong place. A doc without a title. A note at the repo root. A file named in camel case in a folder that is all kebab case. A link that points nowhere. A copy of a page that already existed, with a slightly different name. None of it is wrong exactly. All of it is drift. And after a hundred sessions, the repository is a shape nobody chose.
+
+Every fix you have tried lives in the agent. A system prompt. A rules file. An AGENTS dot M D that says, please, keep the docs in docs. And the agent reads it, and forgets it three tool calls later. Because a prompt is a request. It is not a rule.
+
+Henxels is different, because it does not live in the agent. It lives in the repo.
+
+Henxels is a contract. One file, henxels dot yaml, in the root of your repository. It reads like a whiteboard. A list of sentences. Docs are kebab case markdown, each with a title and a summary. Every link lands. No file over three hundred lines. One journal file per month. Each sentence is a henxel. Under each sentence, the statements that must pass. Required frontmatter, title and summary. Filename casing, kebab case. Max lines, three hundred. That is the whole format. The logic is inside the statements. The YAML stays a dumb, readable list.
+
+And that is the point. A human reads it and understands the shape of the repo, without reading a validator. A small model reads it, and understands the same thing.
+
+Now here is what makes it a harness and not a linter. Henxels installs git hooks. The contract runs before every commit. And a henxel that fails does not return a bare boolean. It returns an instruction. Not, error, exit code one. But: this doc has no title. Add a frontmatter title, or move it out of docs. The failure tells the agent what to do instead. Steer before you stop.
+
+And the contract mirrors itself into AGENTS dot M D. So the agent sees the rules before it writes, and hits them again if it forgets. Same rule, same wording, in front of the agent and behind it.
+
+What about breaking a rule? You can. There is exactly one way. You change the contract. You edit henxels dot yaml, and that edit shows up in the diff, and someone reviews it. Disobey responsibly. There is no flag, no environment variable, no override. To bypass the rule, you have to say so, in writing, in the repo.
+
+And it holds every agent. Claude Code, OpenCode, Aider, Hermes, Pi, or a human at a keyboard. Whichever one made the change, the same contract holds it to the same shape. Because the contract is in the repo, not in any one tool.
+
+There is a second layer, for the things that are hard to take back. Guards. Pushing is guarded. Deleting is guarded. Not forbidden. Guarded. You run git push, and henxels says, a push is hard to take back, bless it first. You run henxels bless push. It mints a one time token, bound to that exact commit. Then you push. That is all it takes. It just makes you mean it. Same for deleting files, and for diff edits that quietly lose rows.
+
+And one more behaviour, the one people thank us for. Duplication. Henxels notices when a new file looks like a near copy of one that is already committed. It does not block. It tells you. One concept, one document. Update it, do not clone it. Awareness beats blocking.
+
+Under the hood, henxels is a framework plus a library of checks. Filename casing. Required frontmatter. Links resolve. Max files. Only these subfolders. No secrets. Run henxels catalogue and you see them all. And if the check you need does not exist, you write it in three lines of Python, it loads automatically, and if it is useful to others, henxels contribute sends it upstream as a ready to merge pull request.
+
+Henxels eats its own tail. Its own repo is governed by its own contract. There is a check that checks the checks. The pre commit hook runs henxels check. Henxels gating henxels. The tail eating is the test.
+
+Here is how you start.
+
+Open a terminal in your repo. Run: u v x henxels init. That writes the contract, installs the git hooks, and adds the digest to AGENTS dot M D. Run henxels catalogue to see the statements. Edit henxels dot yaml to match your folders. Run henxels check, dash dash all. Commit the contract. Done.
+
+Or hand it to your agent. The readme has a prompt to paste. The agent installs henxels, tailors the contract to your folders, and commits it.
+
+Building a knowledge base for agents? There are templates. Henxels init, dash dash template, okf dash llm dash wiki, sets up a wiki in Google's Open Knowledge Format. And henxels init, dash dash template, brainpick dash brain, sets up a brain. An agent's memory, with a data flow from journals to knowledge to skills, a contract that keeps the flow honest, and a first skill that teaches the agent how to use it. That brain is what brainpick serves, and brainpick has its own episode.
+
+Pure JavaScript shop, allergic to Python? N P M install, dash G, henxels. The launcher fetches its own engine on first run. No Python on your side.
+
+That is henxels. The rules live in the repo. Every agent is held to the same shape. Breaking a rule takes a commit. And the failure always tells you what to do instead.
+
+Put your repo in suspenders. Thanks for listening.
