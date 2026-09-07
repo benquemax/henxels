@@ -33,6 +33,27 @@ def _load(root: Path):
     return contract
 
 
+def _digest_drift(contract, root: Path) -> list[Finding]:
+    """Warn (loudly, never block) when the AGENTS.md digest is stale relative to
+    the contract — the mirrored rules agents read must not silently lie after a
+    henxels.yaml edit that was never `henxels sync`'d. Only fires when an
+    AGENTS.md digest already exists; a repo that doesn't mirror is left alone."""
+    from henxels.digest import check_file
+    from henxels.findings import WARN
+
+    target = root / "AGENTS.md"
+    if check_file(target, contract) != "stale":
+        return []
+    return [Finding(
+        level=WARN,
+        henxel="The AGENTS.md digest mirrors the contract — keep it in sync",
+        path="AGENTS.md",
+        message="AGENTS.md is out of date with henxels.yaml",
+        details=["agents read the mirrored digest, not the YAML — a stale digest lies to them"],
+        steer="henxels sync   (then commit AGENTS.md too)",
+    )]
+
+
 def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list[Finding]]:
     root = Path(root)
     contract = _load(root)
@@ -40,6 +61,8 @@ def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list
         return 0, []
 
     findings: list[Finding] = run_contract(contract, root, diff=staged_diff(root))
+
+    findings.extend(_digest_drift(contract, root))
 
     sim = settings.similarity(contract)
     if sim:

@@ -97,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
     ps = sub.add_parser("sync", help="refresh the AGENTS.md digest")
     ps.add_argument("--config", default=None)
     ps.add_argument("--target", default="AGENTS.md")
+    ps.add_argument("--check", action="store_true",
+                    help="report whether the digest is in sync without writing (exit 1 if stale)")
     ps.set_defaults(func=cmd_sync)
 
     pd = sub.add_parser("doctor", help="check that henxels is correctly set up")
@@ -479,13 +481,25 @@ def cmd_integrate(args) -> int:
 
 
 def cmd_sync(args) -> int:
-    from henxels.digest import sync_file
+    from henxels.digest import check_file, sync_file
 
     try:
         contract, root = _load_rooted(args.config)
     except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
+    if args.check:
+        state = check_file(root / args.target, contract)
+        if state == "fresh":
+            print(f"✓ {args.target} is in sync with the contract.")
+            return 0
+        detail = {
+            "stale": "digest is out of date",
+            "absent": "no henxels block found",
+            "missing": "file does not exist",
+        }[state]
+        print(f"✗ {args.target}: {detail} — run `henxels sync`.", file=sys.stderr)
+        return 1
     action = sync_file(root / args.target, contract)
     print(f"✓ {args.target} {action} — contract digest is in sync.")
     return 0

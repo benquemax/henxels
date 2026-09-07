@@ -1,7 +1,7 @@
 """v2 digest rendering and the managed-block round-trip."""
 
 from henxels.contract import Contract, Henxel
-from henxels.digest import BEGIN, render_digest, sync_file, update_block
+from henxels.digest import BEGIN, check_file, render_digest, sync_file, update_block
 
 CONTRACT = Contract(
     settings={"confirm_before_push": True, "ask_me_before_staging": True},
@@ -47,3 +47,19 @@ def test_sync_file_preserves_human_text(tmp_path):
     assert sync_file(target, CONTRACT) == "updated"
     after = target.read_text()
     assert "keep" in after and after.count(BEGIN) == 1
+
+
+def test_check_file_detects_drift(tmp_path):
+    target = tmp_path / "AGENTS.md"
+    assert check_file(target, CONTRACT) == "missing"
+    target.write_text("# Project\n\nNo block here.\n", encoding="utf-8")
+    assert check_file(target, CONTRACT) == "absent"
+    sync_file(target, CONTRACT)
+    assert check_file(target, CONTRACT) == "fresh"
+    # human edits outside the block don't count as drift
+    target.write_text(target.read_text() + "\n## mine\nkeep\n", encoding="utf-8")
+    assert check_file(target, CONTRACT) == "fresh"
+    # a contract change that wasn't sync'd IS drift
+    drifted = Contract(settings=CONTRACT.settings,
+                       henxels=CONTRACT.henxels + [Henxel(text="A new rule", locations=["./x"], statements={})])
+    assert check_file(target, drifted) == "stale"

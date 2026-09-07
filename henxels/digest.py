@@ -108,3 +108,20 @@ def sync_file(path: Path | str, contract: Contract) -> str:
     text = path.read_text(encoding="utf-8") if existed else ""
     path.write_text(update_block(text, render_digest(contract)), encoding="utf-8")
     return "updated" if existed else "created"
+
+
+def check_file(path: Path | str, contract: Contract) -> str:
+    """Report drift between the digest file and the contract WITHOUT writing.
+
+    Returns "missing" (the file does not exist), "absent" (the file exists but
+    carries no henxels block), "stale" (the block does not match the current
+    contract), or "fresh". This is the read-only twin of ``sync_file`` — the
+    freshness half of ``henxels sync`` so a stale AGENTS.md never silently lies
+    to agents who read the digest instead of the YAML."""
+    path = Path(path)
+    if not path.is_file():
+        return "missing"
+    text = path.read_text(encoding="utf-8")
+    if BEGIN not in text or END not in text:
+        return "absent"
+    return "fresh" if text == update_block(text, render_digest(contract)) else "stale"
