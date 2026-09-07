@@ -18,6 +18,13 @@ from henxels.digest import sync_file
 from henxels.engine.discover import DEFAULT_EXCLUDES
 from henxels.engine.gitinfo import is_git_repo, shadowing_hooks_path
 from henxels.hooks import install_hooks
+from henxels.scaffold_brain import (  # noqa: F401 — BRAIN_DIR is part of this module's public surface
+    BRAIN_DIR,
+    BRAIN_SETTINGS,
+    brain_fragment,
+    brain_seeds,
+    ensure_gitignored,
+)
 from henxels.schema import schema_text
 
 
@@ -100,8 +107,9 @@ _CONTRACTS = {"python": _PYTHON, "node": _NODE, "generic": _GENERIC}
 
 # --- use-case templates ----------------------------------------------------
 
-TEMPLATES = ("okf-llm-wiki", "agentic-project")
-DEFAULT_WIKI_DIR = "wiki"
+TEMPLATES = ("okf-llm-wiki", "agentic-project", "brainpick-brain")
+DEFAULT_WIKI_DIR = "_wiki"  # underscore: meta, like _todo.md, _temp/, _brain/
+LEGACY_WIKI_DIRS = ("wiki",)  # scaffolded before the underscore default; still adopted by name
 _MIN_WIKI_MD = 3  # markdown files that make a folder look like an existing wiki
 
 # Wiki-tuned settings: knowledge is easy to lose and easy to scatter.
@@ -324,8 +332,9 @@ def resolve_wiki_dir(root: Path | str, wiki_dir: str | None = None, ask=None) ->
     root = Path(root)
     if wiki_dir:
         return str(wiki_dir).strip().removeprefix("./").strip("/")
-    if (root / DEFAULT_WIKI_DIR).is_dir():
-        return DEFAULT_WIKI_DIR
+    for name in (DEFAULT_WIKI_DIR, *LEGACY_WIKI_DIRS):
+        if (root / name).is_dir():
+            return name
     candidates = wiki_candidates(root)
     if not candidates:
         return DEFAULT_WIKI_DIR
@@ -440,6 +449,8 @@ def init(
         fragment = _okf_fragment(wiki, warn=(mode == "governing"))
     elif template == "agentic-project":
         fragment = _AGENTIC
+    elif template == "brainpick-brain":
+        fragment = brain_fragment()
     else:
         fragment = ""
     if cfg_path.exists() and not force:
@@ -448,15 +459,19 @@ def init(
             report["fragment"] = fragment  # paste-able: never edit an existing contract
     else:
         # The OKF checks (no_frontmatter, the frontmatter_dates datetime form) landed in
-        # 0.6, so the template declares that floor — a teammate on an older install gets a
-        # clear "upgrade" message instead of cryptic per-check errors.
-        requires = '\nrequires_henxels: ">=0.6"   # the OKF checks below need henxels >= 0.6\n' if template == "okf-llm-wiki" else ""
-        settings = _OKF_SETTINGS if template == "okf-llm-wiki" else _SETTINGS
+        # 0.6 and max_files (the brain's journal roll) in 0.13, so each template declares
+        # its floor — a teammate on an older install gets a clear "upgrade" message
+        # instead of cryptic per-check errors.
+        floors = {"okf-llm-wiki": ("0.6", "the OKF checks below need henxels >= 0.6"),
+                  "brainpick-brain": ("0.13", "max_files and the OKF checks below need henxels >= 0.13")}
+        requires = (f'\nrequires_henxels: ">={floors[template][0]}"   # {floors[template][1]}\n'
+                    if template in floors else "")
+        settings = {"okf-llm-wiki": _OKF_SETTINGS, "brainpick-brain": BRAIN_SETTINGS}.get(template, _SETTINGS)
         body = _HEADER + requires + settings + _CONTRACTS.get(kind, _GENERIC) + fragment
         cfg_path.write_text(body, encoding="utf-8")
         report["contract"] = ("created", kind)
 
-    if template == "okf-llm-wiki":
+    if template in ("okf-llm-wiki", "brainpick-brain"):
         checks_path = root / "henxels_checks.py"
         if checks_path.exists():
             report["checks_file"] = ("exists", "henxels_checks.py")
@@ -470,6 +485,12 @@ def init(
     if template == "agentic-project" and report["contract"][0] == "created":
         written = _write_seeds(root, _AGENTIC_SEEDS)
         if _ensure_temp_gitignored(root):
+            written.append(".gitignore")
+        report["seeds"] = written
+
+    if template == "brainpick-brain" and report["contract"][0] == "created":
+        written = _write_seeds(root, brain_seeds())
+        if ensure_gitignored(root):
             written.append(".gitignore")
         report["seeds"] = written
 

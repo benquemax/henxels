@@ -29,22 +29,30 @@ teaching git hooks, and drops a contract digest into `AGENTS.md`.
 
 ```bash
 henxels init --template okf-llm-wiki    # an Open Knowledge Format wiki
+henxels init --template agentic-project # _todo.md, _temp/, _vision/, _plans/
+henxels init --template brainpick-brain # a _brain/ — your agent's memory, served by brainpick
 ```
 
 Templates ride on top of the detected starter. `okf-llm-wiki` sets up an
 [OKF](enforcing-okf.md) wiki two ways, depending on what it finds:
 
-- **No wiki yet** — seeds `wiki/` (an index, one starter concept, an update log) so the
+- **No wiki yet** — seeds `_wiki/` (an index, one starter concept, an update log) so the
   contract holds from the first minute, with blocking rules: the wiki grows up inside
   them.
 - **Existing wiki** — governs it without touching its content. The wiki rules start at
   `level: warn`, so the findings are a migration plan, not blocked commits; when
   `henxels check` runs clean, delete the `level: warn` lines to enforce.
 
-The wiki lives at `wiki/` by default; say `--wiki-dir pages` to govern another folder.
+The wiki lives at `_wiki/` by default (an existing `wiki/` is adopted); say
+`--wiki-dir pages` to govern another folder.
 If henxels spots markdown that might already be your wiki somewhere else, it stops and
 asks rather than guessing — the error contains the exact command to rerun. Add
 `--dry-run` to see what init would do without writing anything.
+
+`agentic-project` seeds [the working folders agents lean on](agentic-project-starter.md);
+`brainpick-brain` goes further and scaffolds [a brain](brainpick-brain-starter.md) — an
+OKF wiki with memory-type folders and a declared data flow, compiled and served to
+your agent by [brainpick](https://github.com/benquemax/brainpick).
 
 > **Using husky (or another `core.hooksPath` tool)?** git then looks for hooks there, not
 > in `.git/hooks` where henxels installs — so henxels' hooks won't fire. `henxels init`

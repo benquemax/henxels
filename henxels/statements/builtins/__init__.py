@@ -7,7 +7,7 @@ Importing this package registers every built-in (each category module runs its
     structure   where files/folders live   (allowed_filetypes, required_*, forbidden_*, …)
     content     what's inside files        (required_frontmatter, frontmatter_*, markdown_lint)
     links       cross-page navigation      (links_resolve, links_are_relative, min_outbound_links, referenced_in)
-    size        per-file line budgets      (max_lines)
+    size        line and file budgets      (max_lines, max_files)
     security    things that must not ship  (no_secrets)
     history     rules about change         (append_only, immutable, bump_updated_on_change)
     meta        the statement library      (well_formed_statements)

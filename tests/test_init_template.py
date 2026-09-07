@@ -26,8 +26,8 @@ def _findings(root):
 
 def test_scaffold_empty_repo_is_green_at_birth(tmp_path):
     report = init(tmp_path, install_git_hooks=False, template="okf-llm-wiki")
-    assert report["wiki"] == ("scaffolded", "wiki")
-    for seed in ("wiki/index.md", "wiki/wiki-conventions.md", "wiki/log.md"):
+    assert report["wiki"] == ("scaffolded", "_wiki")  # underscore: meta, like _todo.md and _brain/
+    for seed in ("_wiki/index.md", "_wiki/wiki-conventions.md", "_wiki/log.md"):
         assert (tmp_path / seed).is_file(), f"missing seed {seed}"
     assert (tmp_path / "henxels_checks.py").is_file()
     assert _findings(tmp_path) == []
@@ -36,7 +36,7 @@ def test_scaffold_empty_repo_is_green_at_birth(tmp_path):
 def test_scaffold_rules_block_by_default(tmp_path):
     init(tmp_path, install_git_hooks=False, template="okf-llm-wiki")
     text = (tmp_path / "henxels.yaml").read_text(encoding="utf-8")
-    assert "rooted_links_resolve: ./wiki" in text
+    assert "rooted_links_resolve: ./_wiki" in text
     assert "level: warn" not in text  # nothing to migrate → enforce from birth
     assert "frontmatter_values" in text  # taxonomy ships commented out, ready to pin
     assert "# frontmatter_values" in text or "#   frontmatter_values" in text
@@ -46,10 +46,10 @@ def test_scaffold_seeds_declare_okf_version_and_today(tmp_path):
     import datetime
 
     init(tmp_path, install_git_hooks=False, template="okf-llm-wiki")
-    assert 'okf_version: "0.1"' in (tmp_path / "wiki/index.md").read_text(encoding="utf-8")
+    assert 'okf_version: "0.1"' in (tmp_path / "_wiki/index.md").read_text(encoding="utf-8")
     today = datetime.date.today().isoformat()
-    assert today in (tmp_path / "wiki/log.md").read_text(encoding="utf-8")
-    assert today in (tmp_path / "wiki/wiki-conventions.md").read_text(encoding="utf-8")
+    assert today in (tmp_path / "_wiki/log.md").read_text(encoding="utf-8")
+    assert today in (tmp_path / "_wiki/wiki-conventions.md").read_text(encoding="utf-8")
 
 
 def test_template_contract_uses_known_statements_only(tmp_path):
@@ -127,9 +127,17 @@ def test_wiki_candidates_threshold_and_excludes(tmp_path):
 
 
 def test_default_wiki_dir_wins_when_present(tmp_path):
-    _existing_wiki(tmp_path, "wiki")
+    _existing_wiki(tmp_path, "_wiki")
     _existing_wiki(tmp_path, "pages")
+    assert resolve_wiki_dir(tmp_path) == "_wiki"
+
+
+def test_legacy_wiki_dir_is_still_adopted(tmp_path):
+    # repos scaffolded before the underscore default keep working without a flag
+    _existing_wiki(tmp_path, "wiki")
     assert resolve_wiki_dir(tmp_path) == "wiki"
+    report = init(tmp_path, install_git_hooks=False, template="okf-llm-wiki")
+    assert report["wiki"] == ("governing", "wiki")
 
 
 def test_ambiguous_location_error_is_an_instruction(tmp_path):
@@ -176,7 +184,7 @@ def test_existing_checks_file_is_kept(tmp_path):
 def test_dry_run_writes_nothing(tmp_path):
     report = init(tmp_path, install_git_hooks=False, template="okf-llm-wiki", dry_run=True)
     assert report["dry_run"] is True
-    assert report["wiki"] == ("scaffolded", "wiki")
+    assert report["wiki"] == ("scaffolded", "_wiki")
     assert list(tmp_path.iterdir()) == []  # not a single file
 
 

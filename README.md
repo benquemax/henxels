@@ -121,6 +121,15 @@ Starting an **agent-driven project**? `henxels init --template agentic-project` 
 written as a book), `_plans/` (decided work) — plus the henxels that keep them honest,
 and a repo-wide no-secrets rule.
 
+Want to give your agent a **brain**? `henxels init --template brainpick-brain` starts
+the project from the
+[brainpick-standardized starter](https://github.com/benquemax/henxels/blob/main/docs/brainpick-brain-starter.md):
+a `_brain/` with memory-type folders (knowledge, skills, journals, vision, plans) plus raw source material, a
+declared data flow, and a first skill that teaches the agent how to use it. Later you
+use the brain through the [brainpick](https://github.com/benquemax/brainpick) MCP tool,
+and view and edit it yourself via its GUI — more on
+[brainpick's repository](https://github.com/benquemax/brainpick).
+
 **Pure JS repo, allergic to Python?** `npm i -g henxels` is all you need. On first run
 the launcher fetches the official [uv](https://docs.astral.sh/uv/) binary
 (checksum-pinned), uv provisions Python by itself, and the engine version always
@@ -226,6 +235,7 @@ The README is the tour; the deeper guides live in
 - [Agent integrations](https://github.com/benquemax/henxels/blob/main/docs/agent-integrations.md) — the AGENTS.md digest and harness hooks.
 - [Enforcing OKF](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md) — a worked contract for the Open Knowledge Format.
 - [The agentic project starter](https://github.com/benquemax/henxels/blob/main/docs/agentic-project-starter.md) — `_todo.md`, `_temp/`, `_vision/`, and `_plans/` for agent-driven work.
+- [The brainpick brain starter](https://github.com/benquemax/henxels/blob/main/docs/brainpick-brain-starter.md) — a `_brain/` in the brainpick brain format: your agent's memory, served by brainpick.
 - [Upgrading](https://github.com/benquemax/henxels/blob/main/docs/upgrading.md) — the version nag, refreshing local files, schema evolution.
 
 ---

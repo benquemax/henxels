@@ -24,11 +24,11 @@ maintains the wiki reads the format's rules before it writes a single page.
 henxels init --template okf-llm-wiki
 ```
 
-On a repo with no wiki this seeds `wiki/` (index, starter concept, update log) and the
+On a repo with no wiki this seeds `_wiki/` (index, starter concept, update log) and the
 contract below, green at birth. On a repo that already has a wiki it governs it in
 place: the wiki rules start at `level: warn`, so `henxels check` hands your agent a
 migration plan instead of blocking commits — delete the `level: warn` lines once it
-runs clean. Use `--wiki-dir <folder>` if the bundle doesn't live at `wiki/`, and
+runs clean. Use `--wiki-dir <folder>` if the bundle doesn't live at `_wiki/` (a legacy `wiki/` is adopted as is), and
 `--dry-run` to preview. The rest of this guide is what that command sets up, and why.
 
 ## The contract

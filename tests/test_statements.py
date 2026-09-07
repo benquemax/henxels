@@ -472,6 +472,35 @@ def test_max_lines(tmp_path):
     assert max_lines(50, "a.md", s) is None
 
 
+def test_max_files_counts_direct_files_only(tmp_path):
+    # a monthly journal folder: one current month, history below in archive/
+    files = {"j/2026-09.md": "x", "j/index.md": "x", "j/archive/2026-08.md": "x", "j/archive/2026-07.md": "x"}
+    s = scope_for(tmp_path, files, locations=["j"])
+    assert run("max_files", 2, s) == []
+    assert run("max_files", 1, s)  # index + month = 2 > 1
+
+
+def test_max_files_respects_except(tmp_path):
+    files = {"j/2026-09.md": "x", "j/2026-08.md": "x", "j/index.md": "x"}
+    s = build_scope(["j"], list(files), _write(tmp_path, files), {}, excludes=["j/index.md"])
+    v = run("max_files", 1, s)
+    assert v and "2 files" in v[0] and "j/" in v[0]
+
+
+def test_max_files_names_the_location(tmp_path):
+    s = scope_for(tmp_path, {"a/x.md": "x", "a/y.md": "y"}, locations=["a"])
+    v = run("max_files", 1, s)
+    assert v and v[0].startswith("a/ — 2 files")
+
+
+def _write(tmp_path, files):
+    for rel, content in files.items():
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+    return tmp_path
+
+
 # --- no_secrets ----------------------------------------------------------
 
 def test_no_secrets_flags_private_key(tmp_path):

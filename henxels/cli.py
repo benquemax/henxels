@@ -55,11 +55,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     pi.add_argument("--no-digest", action="store_true")
     pi.add_argument("--force", action="store_true")
-    pi.add_argument("--template", choices=["okf-llm-wiki", "agentic-project"], default=None,
+    pi.add_argument("--template", choices=["okf-llm-wiki", "agentic-project", "brainpick-brain"],
+                    default=None,
                     help="start from a use-case template (okf-llm-wiki: an Open Knowledge Format wiki; "
-                         "agentic-project: _todo.md, _temp/, _vision/, _plans/ for agent-driven work)")
+                         "agentic-project: _todo.md, _temp/, _vision/, _plans/ for agent-driven work; "
+                         "brainpick-brain: a _brain/ in the brainpick brain format — your agent's memory)")
     pi.add_argument("--wiki-dir", default=None,
-                    help="folder the okf-llm-wiki template governs (default: wiki/)")
+                    help="folder the okf-llm-wiki template governs (default: _wiki/)")
     pi.add_argument("--dry-run", action="store_true", help="show what init would do, write nothing")
     pi.set_defaults(func=cmd_init)
 
@@ -327,6 +329,8 @@ def cmd_init(args) -> int:
                 print(f"  • govern the existing wiki at {wiki}/ with rules starting at `level: warn`")
         elif report.get("template") == "agentic-project":
             print("  • seed _todo.md, _vision/, _plans/ and gitignore _temp/")
+        elif report.get("template") == "brainpick-brain":
+            print("  • scaffold _brain/ (knowledge, skills, journal, vision, plans), brainpick.toml, _todo.md")
         return 0
 
     state, info = report["contract"]
@@ -347,6 +351,10 @@ def cmd_init(args) -> int:
             print(f"✓ wiki: governing existing {wiki}/ — wiki rules start at `level: warn`")
     elif report.get("template") == "agentic-project" and report.get("seeds"):
         print("✓ seeded _todo.md, _vision/, _plans/ — and gitignored _temp/")
+    elif report.get("template") == "brainpick-brain" and report.get("seeds"):
+        print("✓ brain: scaffolded _brain/ (knowledge, skills, journal, vision, plans) + brainpick.toml, _todo.md")
+        print("    next: `brainpick init` — detects the bundle, mints its id, compiles; then `brainpick mcp`")
+        print("    the format and why: https://github.com/benquemax/brainpick/blob/main/docs/brain.md")
     checks_file = report.get("checks_file")
     if checks_file:
         mark, verb = ("✓", "created") if checks_file[0] == "created" else ("•", "already exists — kept")

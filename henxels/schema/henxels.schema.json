@@ -131,6 +131,7 @@
         "forbidden_subfolders": { "$ref": "#/$defs/scalarOrList" },
         "must_not_exist": { "type": "boolean" },
         "max_lines": { "type": "integer", "minimum": 1, "description": "each file in scope stays under this many lines" },
+        "max_files": { "type": "integer", "minimum": 1, "description": "a location holds at most N files directly (subfolders not counted) — keep a folder from silting up, e.g. one journal month at the top level" },
         "no_secrets": { "type": "boolean", "description": "files contain no credentials (private keys, API tokens, passwords)" },
         "append_only": { "type": "boolean", "description": "staged edits only add lines to the end; existing lines are never changed" },
         "immutable": { "type": "boolean", "description": "files here can be added but never modified once committed" },
