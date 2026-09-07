@@ -102,10 +102,27 @@ jobs:
       - name: Wait for both registries to serve the new version
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          for i in $(seq 1 36); do
-            npm view "henxels@$VERSION" version >/dev/null 2>&1 && break; sleep 5; done
-          for i in $(seq 1 36); do
-            curl -fsS "https://pypi.org/pypi/henxels/$VERSION/json" >/dev/null 2>&1 && break; sleep 5; done
+
+          # Wait on the SIMPLE INDEX, not the JSON API. The npm launcher installs
+          # henxels through `uv tool`, whose resolver reads PyPI's simple index
+          # (/simple/henxels/) — a different, separately-cached endpoint from the
+          # JSON API (/pypi/.../json). The JSON API can serve a new version minutes
+          # before the simple index does, so waiting on the JSON API let a doomed
+          # install through: `No version of henxels==$VERSION` (0.14.0's release).
+          # Cache-bust each poll so a stale CDN copy never satisfies the wait.
+          wait_for () {
+            local name="$1" probe="$2"
+            for i in $(seq 1 60); do
+              if eval "$probe"; then echo "$name: $VERSION is serving"; return 0; fi
+              sleep 5
+            done
+            echo "::error::$name did not serve henxels==$VERSION within 5 min"; return 1
+          }
+
+          wait_for "npm" \
+            'npm view "henxels@$VERSION" version >/dev/null 2>&1'
+          wait_for "PyPI simple index" \
+            'curl -fsS "https://pypi.org/simple/henxels/?nocache=$RANDOM" 2>/dev/null | grep -q "henxels-$VERSION"'
       - name: Fresh npm install runs end to end
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
