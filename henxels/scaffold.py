@@ -25,15 +25,15 @@ from henxels.scaffold_brain import (  # noqa: F401 — BRAIN_DIR is part of this
     brain_seeds,
     ensure_gitignored,
 )
-from henxels.schema import schema_text
+from henxels.schema import LOCAL_SCHEMA_PATH, refresh_local_schema
 
 
 class ScaffoldError(Exception):
     """init could not proceed; the message is an instruction, not a complaint."""
 
 # A local schema copy (written by init) gives editors autocomplete offline and in
-# private repos — no fetch from a maybe-private GitHub URL required.
-LOCAL_SCHEMA_PATH = ".henxels/henxels.schema.json"
+# private repos — no fetch from a maybe-private GitHub URL required. The path itself
+# lives in henxels.schema, which also owns the freshness check over that copy.
 LOCAL_SCHEMA_REL = f"./{LOCAL_SCHEMA_PATH}"
 
 _HEADER = f"""# henxels.yaml — a whiteboard list of rules. Each bullet is one henxel.
@@ -44,10 +44,8 @@ _HEADER = f"""# henxels.yaml — a whiteboard list of rules. Each bullet is one 
 
 def write_local_schema(root: Path | str) -> Path:
     """Write the bundled JSON Schema into the repo so editors can resolve it locally."""
-    path = Path(root) / LOCAL_SCHEMA_PATH
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(schema_text(), encoding="utf-8")
-    return path
+    refresh_local_schema(root)
+    return Path(root) / LOCAL_SCHEMA_PATH
 
 _SETTINGS = """
 # Behaviours (not tests): protections + tuning knobs.

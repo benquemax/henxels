@@ -481,27 +481,50 @@ def cmd_integrate(args) -> int:
 
 
 def cmd_sync(args) -> int:
+    from henxels import __version__
     from henxels.digest import check_file, sync_file
+    from henxels.schema import LOCAL_SCHEMA_PATH, local_schema_state, refresh_local_schema
 
     try:
         contract, root = _load_rooted(args.config)
     except ContractError as exc:
         print(exc, file=sys.stderr)
         return 2
+
+    # The repo-local schema copy is the other artifact that drifts. init used to be the
+    # only thing that refreshed it, so an upgraded tool left every repo documenting the
+    # OLD feature set — and a committed artifact is what people (and agents) trust.
+    schema_state = local_schema_state(root)
+
     if args.check:
         state = check_file(root / args.target, contract)
-        if state == "fresh":
+        stale_schema = schema_state == "stale"
+        if state == "fresh" and not stale_schema:
             print(f"✓ {args.target} is in sync with the contract.")
             return 0
-        detail = {
-            "stale": "digest is out of date",
-            "absent": "no henxels block found",
-            "missing": "file does not exist",
-        }[state]
-        print(f"✗ {args.target}: {detail} — run `henxels sync`.", file=sys.stderr)
+        if state != "fresh":
+            detail = {
+                "stale": "digest is out of date",
+                "absent": "no henxels block found",
+                "missing": "file does not exist",
+            }[state]
+            print(f"✗ {args.target}: {detail} — run `henxels sync`.", file=sys.stderr)
+        if stale_schema:
+            print(
+                f"✗ {LOCAL_SCHEMA_PATH}: schema predates the installed henxels "
+                f"({__version__}) — run `henxels sync` (or `henxels init`).",
+                file=sys.stderr,
+            )
         return 1
+
     action = sync_file(root / args.target, contract)
     print(f"✓ {args.target} {action} — contract digest is in sync.")
+    # Only refresh a copy the repo already keeps: never conjure a new committed
+    # artifact into a repo that deliberately doesn't have one.
+    if schema_state != "missing":
+        result = refresh_local_schema(root)
+        if result != "unchanged":
+            print(f"✓ {LOCAL_SCHEMA_PATH} {result} — schema now matches henxels {__version__}.")
     return 0
 
 

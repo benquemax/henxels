@@ -54,6 +54,29 @@ def _digest_drift(contract, root: Path) -> list[Finding]:
     )]
 
 
+def _schema_drift(root: Path) -> list[Finding]:
+    """Warn (loudly, never block) when the repo's committed schema copy predates the
+    installed henxels. Distinct from the "stale tool" nag: there the tool is behind,
+    here the tool is current and the repo's copy of its documentation is behind — and
+    that copy is what a reader trusts when deciding whether a knob exists. Only fires
+    when a local copy exists; a repo that keeps none is left alone."""
+    from henxels import __version__
+    from henxels.findings import WARN
+    from henxels.schema import LOCAL_SCHEMA_PATH, local_schema_state
+
+    if local_schema_state(root) != "stale":
+        return []
+    return [Finding(
+        level=WARN,
+        henxel="The bundled editor schema mirrors the installed henxels — keep it in sync",
+        path=LOCAL_SCHEMA_PATH,
+        message=f"{LOCAL_SCHEMA_PATH} predates the installed henxels ({__version__})",
+        details=["a schema older than the tool hides knobs that already work — "
+                 "readers trust the committed artifact over the binary"],
+        steer="henxels init   (or `henxels sync`) — then commit the refreshed schema",
+    )]
+
+
 def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list[Finding]]:
     root = Path(root)
     contract = _load(root)
@@ -63,6 +86,7 @@ def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list
     findings: list[Finding] = run_contract(contract, root, diff=staged_diff(root))
 
     findings.extend(_digest_drift(contract, root))
+    findings.extend(_schema_drift(root))
 
     sim = settings.similarity(contract)
     if sim:

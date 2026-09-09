@@ -19,7 +19,9 @@ henxels mirrors the contract into a managed block in `AGENTS.md`, between
 `<!-- henxels:begin -->` and `<!-- henxels:end -->`. Agents read it before they write, so
 they put the right thing in the right place the first time. Your hand-written text outside
 the markers is never touched. Refresh it with `henxels sync` (and `henxels init` regenerates
-it too). When `ask_me_before_staging` is set, the digest leads with a prominent
+it too) — `sync` also refreshes the repo's local editor schema, so an upgraded tool doesn't
+leave the committed artifact documenting an older feature set (see
+[Upgrading](upgrading.md)). When `ask_me_before_staging` is set, the digest leads with a prominent
 "don't `git add` / commit / push — ask the user" directive.
 
 ## In-loop harness hooks

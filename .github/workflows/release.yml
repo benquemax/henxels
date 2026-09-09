@@ -119,10 +119,20 @@ jobs:
             echo "::error::$name did not serve henxels==$VERSION within 5 min"; return 1
           }
 
+          # Capture the index into a variable, THEN match against that string. Piping
+          # curl straight into an early-exiting grep is the pipefail hazard the 0.8.0
+          # release hit: grep exits on first match and can SIGPIPE a still-flushing
+          # curl, failing the step even though the version WAS served — a flaky false
+          # alarm in the very job that certifies the release.
+          pypi_serving () {
+            local index
+            index="$(curl -fsS "https://pypi.org/simple/henxels/?nocache=$RANDOM" 2>/dev/null)" || return 1
+            printf '%s' "$index" | grep -q "henxels-$VERSION"
+          }
+
           wait_for "npm" \
             'npm view "henxels@$VERSION" version >/dev/null 2>&1'
-          wait_for "PyPI simple index" \
-            'curl -fsS "https://pypi.org/simple/henxels/?nocache=$RANDOM" 2>/dev/null | grep -q "henxels-$VERSION"'
+          wait_for "PyPI simple index" 'pypi_serving'
       - name: Fresh npm install runs end to end
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

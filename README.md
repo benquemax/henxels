@@ -248,7 +248,7 @@ The README is the tour; the deeper guides live in
 - [Enforcing OKF](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md) — a worked contract for the Open Knowledge Format.
 - [The agentic project starter](https://github.com/benquemax/henxels/blob/main/docs/agentic-project-starter.md) — `_todo.md`, `_temp/`, `_vision/`, and `_plans/` for agent-driven work.
 - [The brainpick brain starter](https://github.com/benquemax/henxels/blob/main/docs/brainpick-brain-starter.md) — a `_brain/` in the brainpick brain format: your agent's memory, served by brainpick.
-- [Upgrading](https://github.com/benquemax/henxels/blob/main/docs/upgrading.md) — the version nag, refreshing local files, schema evolution.
+- [Upgrading](https://github.com/benquemax/henxels/blob/main/docs/upgrading.md) — the version nag, the stale-schema nag, refreshing local files, schema evolution.
 
 ---
 
@@ -380,7 +380,7 @@ in pre-commit and CI, so a green local run means your PR is merge-ready. See
 | `henxels contribute [name]` | how to upstream a reusable statement |
 | `henxels bless <push\|delete>` | consciously override a guard |
 | `henxels integrate <harness>` | install an agent-harness integration (e.g. `opencode`) |
-| `henxels sync` / `henxels doctor` | refresh the digest / check the setup |
+| `henxels sync` / `henxels doctor` | refresh the digest + local schema / check the setup |
 
 ## License
 

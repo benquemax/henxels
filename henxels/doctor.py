@@ -88,4 +88,19 @@ def diagnose(root: Path | str) -> list[Check]:
     has_digest = agents.is_file() and "henxels:begin" in agents.read_text(encoding="utf-8", errors="replace")
     checks.append(Check(has_digest, "AGENTS.md digest", "" if has_digest else "run `henxels sync`"))
 
+    # The repo-local schema copy only changes when init (or now sync) rewrites it, so
+    # after an upgrade it quietly documents the old feature set. "missing" is a valid
+    # choice, not drift — only an out-of-date copy is worth reporting.
+    from henxels import __version__
+    from henxels.schema import local_schema_state
+
+    state = local_schema_state(root)
+    checks.append(
+        Check(
+            state != "stale",
+            "editor schema current",
+            "" if state != "stale" else f"predates henxels {__version__} — run `henxels init`",
+        )
+    )
+
     return checks
