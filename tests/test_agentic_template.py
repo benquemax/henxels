@@ -64,6 +64,19 @@ def test_temp_is_gitignored(tmp_path):
     assert "_temp/" in (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
 
 
+def test_todo_is_gitignored_and_warns_check_before_planning(tmp_path):
+    init(tmp_path, install_git_hooks=False, template="agentic-project")
+    lines = (tmp_path / ".gitignore").read_text(encoding="utf-8").splitlines()
+    # per-developer scratch, never shared — a merge-conflict magnet otherwise
+    assert "_todo.md" in lines
+    contract = load_contract(tmp_path / "henxels.yaml")
+    todo = next(hx for hx in contract.henxels if "_todo.md" in hx.text)
+    assert todo.level == "warn"  # missing _todo.md is a reminder, not a blocker
+    assert "gitignored" in todo.text.lower()
+    assert "check" in todo.why.lower() and "before" in todo.why.lower()
+    assert "run_before_commit" in todo.statements  # enforces it stays gitignored
+
+
 def test_existing_gitignore_is_appended_not_clobbered(tmp_path):
     (tmp_path / ".gitignore").write_text("node_modules/\n", encoding="utf-8")
     init(tmp_path, install_git_hooks=False, template="agentic-project")

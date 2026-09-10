@@ -41,8 +41,14 @@ henxels:
     required_files: _temp/.gitkeep
 
   - henxel: "The parking lot should exist (gitignored — only a reminder)"
+    why: >
+      Check it before planning any new work — it may already flag a known
+      imperfection, a planned deprecation, or something overlapping the
+      task, and building more onto something already marked for removal
+      wastes the work twice.
     required_files: _todo.md
     level: warn
+    run_before_commit: git check-ignore -q _todo.md
 
   - henxel: "Code is clean and conventional (ruff) before every commit"
     run_before_commit: "uv run ruff check ."

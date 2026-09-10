@@ -197,13 +197,19 @@ _BRAIN = Template("""
     referenced_in: ./$brain/plans/index.md
     except: ./$brain/plans/index.md
 
-  - henxel: "_todo.md lives beside the brain — project management is not knowledge"
+  - henxel: "_todo.md lives beside the brain, gitignored — project management is not knowledge"
     why: >
       Tasks that surface mid-work go to _todo.md instead of derailing the
       task at hand. It is neither evergreen nor an episode, so it is not in
-      $brain/.
+      $brain/. Per-developer, not shared: gitignored, so it is never a
+      merge-conflict magnet and never silently public. Check it before
+      planning any new work — it may already flag a known imperfection, a
+      planned deprecation, or something overlapping the task, and building
+      more onto a feature already marked for removal wastes the work twice.
     in: .
     required_files: _todo.md
+    level: warn
+    run_before_commit: git check-ignore -q _todo.md
 
   - henxel: "_temp stays gitignored"
     why: >
@@ -408,10 +414,13 @@ _SEED_TODO = (
     "# Parking lot\n\n"
     "Tasks that surface mid-work but fall outside its scope land here instead of\n"
     "derailing the task at hand. Project management, not knowledge — that is why\n"
-    "this file lives beside the brain, not in it.\n"
+    "this file lives beside the brain, not in it. Per-developer and gitignored —\n"
+    "never committed, never a merge-conflict magnet. Check it before planning\n"
+    "new work: it may already flag a known imperfection, a planned deprecation,\n"
+    "or something overlapping the task.\n"
 )
 
-GITIGNORE_ENTRIES = ("_temp/", "brainpick.local.toml", ".brainpick/")
+GITIGNORE_ENTRIES = ("_temp/", "brainpick.local.toml", ".brainpick/", "_todo.md")
 
 
 def brain_fragment() -> str:

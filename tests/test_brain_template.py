@@ -92,6 +92,21 @@ def test_todo_and_temp_stay_beside_the_brain(tmp_path):
     assert not (tmp_path / "_brain" / "_todo.md").exists()
     lines = _read(tmp_path, ".gitignore").splitlines()
     assert "_temp/" in lines and "brainpick.local.toml" in lines and ".brainpick/" in lines
+    # per-developer scratch, never shared — a merge-conflict magnet otherwise
+    assert "_todo.md" in lines
+
+
+def test_todo_henxel_warns_gitignored_and_says_check_before_planning(tmp_path):
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    contract = load_contract(tmp_path / "henxels.yaml")
+    apply_imports(contract, root=tmp_path)
+    todo = next(hx for hx in contract.henxels if "_todo.md" in hx.text)
+    assert todo.level == "warn"  # missing _todo.md is a reminder, not a blocker
+    assert "gitignored" in todo.text.lower()
+    assert "check" in todo.why.lower() and "before" in todo.why.lower()
+    assert "run_before_commit" in todo.statements  # enforces it stays gitignored
+    findings = _findings(tmp_path)
+    assert not any(f.is_block for f in findings)  # green at birth, including this one
 
 
 def test_contract_uses_known_statements_only(tmp_path):

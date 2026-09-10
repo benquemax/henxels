@@ -240,12 +240,19 @@ _AGENTIC = """
   - henxel: "No credentials anywhere in the repo"
     no_secrets: true    # no `in:` = the whole repo — subfolders included
 
-  - henxel: "_todo.md exists at the repo root"
+  - henxel: "_todo.md exists at the repo root, gitignored"
     why: >
       Tasks that surface during work but fall outside its scope go to _todo.md
       instead of derailing the task at hand. They get done eventually.
+      Per-developer, not shared: gitignored, so it is never a merge-conflict
+      magnet and never silently public. Check it before planning any new
+      work — it may already flag a known imperfection, a planned
+      deprecation, or something overlapping the task, and building more
+      onto a feature already marked for removal wastes the work twice.
     in: .
     required_files: _todo.md
+    level: warn
+    run_before_commit: git check-ignore -q _todo.md
 
   - henxel: "_temp stays gitignored"
     why: >
@@ -301,14 +308,8 @@ _AGENTIC_SEEDS = {
 
 
 def _ensure_temp_gitignored(root: Path) -> bool:
-    """Append `_temp/` to .gitignore (creating it if needed); never rewrite what's there."""
-    gi = root / ".gitignore"
-    text = gi.read_text(encoding="utf-8") if gi.exists() else ""
-    if {"_temp", "_temp/"} & {line.strip() for line in text.splitlines()}:
-        return False
-    joiner = "" if not text or text.endswith("\n") else "\n"
-    gi.write_text(text + joiner + "_temp/\n", encoding="utf-8")
-    return True
+    """Append `_temp/` and `_todo.md` to .gitignore; never rewrite what's there."""
+    return ensure_gitignored(root, ("_temp/", "_todo.md"))
 
 
 def wiki_candidates(root: Path | str) -> list[tuple[str, int]]:

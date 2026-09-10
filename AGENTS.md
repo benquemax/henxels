@@ -114,6 +114,7 @@ Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks 
 - README links are absolute (it's the long-description on PyPI and npm) (in ./README.md)
 - The scratch folder must exist
 - The parking lot should exist (gitignored — only a reminder) _(warn)_
+  ↳ Check it before planning any new work — it may already flag a known imperfection, a planned deprecation, or something overlapping the task, and building more onto something already marked for removal wastes the work twice.
 - Code is clean and conventional (ruff) before every commit
 - The test suite passes before every commit
 - The contract holds before every push
