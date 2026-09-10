@@ -17,7 +17,7 @@ from henxels.scaffold import BRAIN_DIR, init
 from henxels.statements.registry import all_statements
 
 TEMPLATE = "brainpick-brain"
-FOLDERS = ("knowledge", "skills", "journals", "vision", "plans", "raw")
+FOLDERS = ("knowledge", "skills", "journals", "vision", "plans", "conventions", "raw")
 SEEDS = (
     "_brain/index.md",
     "_brain/log.md",
@@ -26,6 +26,7 @@ SEEDS = (
     "_brain/journals/index.md",
     "_brain/vision/index.md",
     "_brain/plans/index.md",
+    "_brain/conventions/index.md",
     "_brain/raw/index.md",
     "_todo.md",
     "brainpick.toml",
@@ -138,9 +139,36 @@ def test_contract_covers_the_sixteen_rules(tmp_path):
         "no_secrets: true",                       # 13
         "brainpick.local.toml",                   # 13 local config never committed
         "min_outbound_links",                     # grounding
+        "type: [decision]",                       # conventions/ holds decided rules only
     ):
         assert needle in text, f"contract lacks {needle!r}"
     assert "github.com/benquemax/brainpick" in text  # the backlink
+
+
+def test_conventions_holds_decision_type_docs_listed_in_its_index(tmp_path):
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    conventions = tmp_path / "_brain" / "conventions"
+
+    # right type, but not referenced from index.md yet
+    (conventions / "gloss-every-code.md").write_text(
+        f"---\ntype: decision\ntitle: Gloss every code\ndescription: Never a bare id.\n"
+        f"timestamp: {_today()}T00:00:00Z\n---\n\nSee [journal](../journals/index.md).\n",
+        encoding="utf-8",
+    )
+    assert any("gloss-every-code.md" in str(f) for f in _findings(tmp_path))  # unreferenced
+
+    (conventions / "index.md").write_text(
+        "# Conventions\n\n* [Gloss every code](gloss-every-code.md)\n", encoding="utf-8",
+    )
+    assert _findings(tmp_path) == []  # referenced now, green again
+
+    # wrong type is rejected — conventions/ is decisions, not general concepts
+    (conventions / "wrong-type.md").write_text(
+        f"---\ntype: article\ntitle: Wrong type\ndescription: Should be decision.\n"
+        f"timestamp: {_today()}T00:00:00Z\n---\n\nSee [journal](../journals/index.md).\n",
+        encoding="utf-8",
+    )
+    assert any("wrong-type.md" in str(f) for f in _findings(tmp_path))
 
 
 def test_contract_fails_ungrounded_knowledge(tmp_path):

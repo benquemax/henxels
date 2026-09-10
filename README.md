@@ -136,7 +136,7 @@ and a repo-wide no-secrets rule.
 Want to give your agent a **brain**? `henxels init --template brainpick-brain` starts
 the project from the
 [brainpick-standardized starter](https://github.com/benquemax/henxels/blob/main/docs/brainpick-brain-starter.md):
-a `_brain/` with memory-type folders (knowledge, skills, journals, vision, plans) plus raw source material, a
+a `_brain/` with memory-type folders (knowledge, skills, journals, vision, plans, conventions) plus raw source material, a
 declared data flow, and a first skill that teaches the agent how to use it. Later you
 use the brain through the [brainpick](https://github.com/benquemax/brainpick) MCP tool,
 and view and edit it yourself via its GUI — more on

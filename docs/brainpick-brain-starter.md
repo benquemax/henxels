@@ -1,6 +1,6 @@
 ---
 title: The brainpick brain starter
-summary: The brainpick-brain template — a _brain/ in the brainpick brain format (knowledge, skills, journals, vision, plans, plus raw source material), a first skill that teaches the agent how to use it, and the henxels that keep the data flow honest.
+summary: The brainpick-brain template — a _brain/ in the brainpick brain format (knowledge, skills, journals, vision, plans, conventions, plus raw source material), a first skill that teaches the agent how to use it, and the henxels that keep the data flow honest.
 ---
 
 # The brainpick brain starter
@@ -37,20 +37,24 @@ _brain/
   raw/                undistilled source material — transcripts, exports, clippings
   vision/             direction — the northstar, written as a book
   plans/              decided work
+  conventions/        decided rules and principles — how things get done, standing
 _todo.md              the parking lot — beside the brain, not in it
 _temp/                gitignored scratch (never in the brain)
 brainpick.toml        shared policy: [bundle] root + exclude, [index] mode, [brain] format
 ```
 
-The five folders `knowledge/ skills/ journals/ vision/ plans/` are **memory types**,
-one job each, and the contract refuses a sixth: a kind of memory that does not fit
-is a `type` value or a sub-folder, never a new sibling. `raw/` beside them is not
-memory but the material memory is made from — kept orderly and greppable, and
-excluded from the compiled brain (`exclude = ["raw/*"]` in `brainpick.toml`) because
-it is noisy by nature. Information flows in one direction — **raw → journals →
-knowledge → skills** — and is read in reverse, most distilled first: skills are the
-purest, most tested layer, the journals the rawest that still counts as memory.
-Reading a less distilled layer is a distillation opportunity.
+The six folders `knowledge/ skills/ journals/ vision/ plans/ conventions/` are
+**memory types**, one job each, and the contract refuses a seventh: a kind of
+memory that does not fit is a `type` value or a sub-folder, never a new sibling.
+`raw/` beside them is not memory but the material memory is made from — kept
+orderly and greppable, and excluded from the compiled brain
+(`exclude = ["raw/*"]` in `brainpick.toml`) because it is noisy by nature.
+Information flows in one direction — **raw → journals → knowledge → skills**,
+with a settled decision breaking off into `conventions/` (`type: decision`)
+instead when it applies broadly rather than to one task — and is read in
+reverse, most distilled first: skills are the purest, most tested layer, the
+journals the rawest that still counts as memory. Reading a less distilled
+layer is a distillation opportunity.
 
 Journals are logs, not concept docs: no frontmatter, one file per month, every
 heading an ISO date. That caps a journal's length forever and keeps history without
@@ -70,8 +74,8 @@ gitignored by the template.
 `skills/using-the-brain.md` is a playbook written for the agent: **pull the brain's
 latest version before reading anything** (it is shared memory — others commit to it
 between sessions, and a stale checkout is knowledge the brain has already
-corrected); then read the closest brain first, then `skills/`, then `knowledge/`,
-then `journals/`, and `raw/` only by grep to ground or to distil; roll the month;
+corrected); then read the closest brain first, then `skills/`, then `conventions/`, then
+`knowledge/`, then `journals/`, and `raw/` only by grep to ground or to distil; roll the month;
 distil upward, commit and push what you changed, and
 leave a pointer rather than a copy; ground every claim inline; treat the brain as
 *the best knowledge available at the moment, not the truth*. Its `description` is a
@@ -86,7 +90,7 @@ type (python, node, or generic):
 
 - **The compiled brain is fresh before every commit** — `brainpick compile
   --check-fresh` gates commits; stale artifacts lie to agents.
-- **Folders are memory types** — the five memory folders plus `raw/` are required
+- **Folders are memory types** — the six memory folders plus `raw/` are required
   and the only ones allowed.
 - **Brain material is markdown plus small data and scripts** — `.md`, `.txt`, `.py`,
   `.json`, `.yaml`, `.toml`; scratch goes to `_temp/`.
@@ -95,9 +99,9 @@ type (python, node, or generic):
   frontmatter or links required.
 - **Every concept doc is kebab-case markdown with OKF frontmatter** — `type`,
   `title`, `description`; `timestamp` is a real ISO 8601 datetime bumped on change.
-- **Every claim is grounded** — pages in `knowledge/`, `skills/` and `plans/` link out
-  at least once (Wikipedia-style, inline); journal entries are the primary sources and
-  are exempt.
+- **Every claim is grounded** — pages in `knowledge/`, `skills/`, `plans/` and
+  `conventions/` link out at least once (Wikipedia-style, inline); journal entries
+  are the primary sources and are exempt.
 - **Skills are playbooks that form a dependency tree** — `type: playbook`, edges
   declared in `depends_on`; `skilltree.md` is generated by brainpick, never edited.
 - **One journal file per month** — `journals/YYYY-MM.md`, no frontmatter, a
@@ -108,8 +112,9 @@ type (python, node, or generic):
   excepted); earlier months live in `journals/archive/`, same shape, untouched.
 - **Every link lands** — bundle-absolute and relative alike; reserved `index.md` and
   `log.md` files stay frontmatter-free; update logs are date-sectioned.
-- **`vision/` is a book and `plans/` holds decided work** — each with an index every
-  page is listed in.
+- **`vision/` is a book, `plans/` holds decided work, `conventions/` holds decided
+  rules** — each with an index every page is listed in; `conventions/` pages are
+  also restricted to `type: decision`.
 - **`_todo.md` exists, `_temp/` and `brainpick.local.toml` stay gitignored, and no
   credentials anywhere.**
 

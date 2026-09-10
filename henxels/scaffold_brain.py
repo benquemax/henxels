@@ -1,9 +1,10 @@
 """The brainpick brain starter (``henxels init --template brainpick-brain``).
 
-A brain is a wiki meant to be an agent's memory: ``_brain/`` with five memory-type
-folders (knowledge, skills, journal, vision, plans), a declared data flow
-(journal → knowledge → skills, read in reverse), inline grounding, and a first
-skill that teaches the agent how to use and improve it. brainpick's spec/85 fixes
+A brain is a wiki meant to be an agent's memory: ``_brain/`` with six memory-type
+folders (knowledge, skills, journal, vision, plans, conventions), a declared data
+flow (journal → knowledge → skills, read in reverse; a settled decision → a
+conventions page alongside it), inline grounding, and a first skill that teaches
+the agent how to use and improve it. brainpick's spec/85 fixes
 the format; this template scaffolds it — structure + contract live here, serving
 (``brainpick init``, compile, the ``brain_*`` MCP tools) is brainpick's half of the
 handoff: https://github.com/benquemax/brainpick
@@ -16,7 +17,7 @@ from pathlib import Path
 from string import Template
 
 BRAIN_DIR = "_brain"
-BRAIN_FOLDERS = ("knowledge", "skills", "journals", "vision", "plans", "raw")
+BRAIN_FOLDERS = ("knowledge", "skills", "journals", "vision", "plans", "conventions", "raw")
 BRAINPICK_URL = "https://github.com/benquemax/brainpick"
 
 BRAIN_SETTINGS = """
@@ -46,23 +47,27 @@ _BRAIN = Template("""
     required_files: brainpick.toml
     run_before_commit: brainpick compile --check-fresh
 
-  - henxel: "Folders are memory types — knowledge, skills, journals, vision, plans — one job each; raw/ is source material"
+  - henxel: "Folders are memory types — knowledge, skills, journals, vision, plans, conventions — one job each; raw/ is source material"
     why: >
       knowledge/ is semantic memory (evergreen concepts), skills/ procedural
       (distilled, actionable procedures), journals/ episodic (one file per
       month, dated sections), vision/ direction (a book), plans/ decided
-      work. raw/ is not a memory type: it is undistilled source material
-      (transcripts, exports, clippings) that knowledge grounds on — governed
-      for order, exempt from OKF, and excluded from brainpick's results.
-      Nothing is replicated across layers. A memory type that does not fit
-      is a `type` value or a sub-folder, never a seventh sibling. Read
-      skills/ first — it is the most distilled, tested and pure layer — then
-      knowledge/, then journals/; grep raw/ only to ground or to distil.
+      work, conventions/ decided rules and principles for HOW things get
+      done (standing policy — naming, process, contracts — not a specific
+      task like plans/, not a step-by-step procedure like skills/). raw/ is
+      not a memory type: it is undistilled source material (transcripts,
+      exports, clippings) that knowledge grounds on — governed for order,
+      exempt from OKF, and excluded from brainpick's results. Nothing is
+      replicated across layers. A memory type that does not fit these seven
+      is a `type` value or a sub-folder, never an eighth sibling. Read
+      skills/ first — it is the most distilled, tested and pure layer —
+      then conventions/, then knowledge/, then journals/; grep raw/ only to
+      ground or to distil.
       Data flow architecture: $url/blob/main/docs/data-flow-architecture.md
     in: ./$brain
     required_files: index.md
-    required_subfolders: [knowledge, skills, journals, vision, plans, raw]
-    only_these_subfolders: [knowledge, skills, journals, vision, plans, raw]
+    required_subfolders: [knowledge, skills, journals, vision, plans, conventions, raw]
+    only_these_subfolders: [knowledge, skills, journals, vision, plans, conventions, raw]
 
   - henxel: "Brain material is markdown plus small data and scripts; scratch is _temp/"
     why: >
@@ -104,7 +109,7 @@ _BRAIN = Template("""
     frontmatter_dates: { timestamp: datetime }
     bump_updated_on_change: timestamp
 
-  - henxel: "Every claim is grounded — knowledge, skills and plans link to where they came from"
+  - henxel: "Every claim is grounded — knowledge, skills, plans and conventions link to where they came from"
     why: >
       Wikipedia-style, inline, a plain link at the claim: a journal entry (a
       decision this brain made), an external page, another brain
@@ -112,7 +117,7 @@ _BRAIN = Template("""
       page with no outbound links is ungrounded and fails, not warns.
       Journals are the primary sources and are exempt.
       $url/blob/main/docs/grounding.md
-    in: ["./$brain/knowledge/*", "./$brain/skills/*", "./$brain/plans/*"]
+    in: ["./$brain/knowledge/*", "./$brain/skills/*", "./$brain/plans/*", "./$brain/conventions/*"]
     except: ["**/index.md", "**/skilltree.md"]
     min_outbound_links: 1
 
@@ -196,6 +201,22 @@ _BRAIN = Template("""
     required_files: index.md
     referenced_in: ./$brain/plans/index.md
     except: ./$brain/plans/index.md
+
+  - henxel: "conventions/ holds decided rules and principles, one per page, every one listed in its index"
+    why: >
+      A convention is a standing answer to "how do we do this" — naming,
+      process, a contract a team holds itself to — decided once and applied
+      broadly, unlike plans/ (one specific piece of work) or skills/ (a
+      procedure to execute). type: decision keeps it distinct from
+      knowledge/'s general concepts; ground each one the same way any other
+      claim is grounded (the decision episode, an external source, or a
+      stated assumption).
+    in: ./$brain/conventions
+    required_files: index.md
+    referenced_in: ./$brain/conventions/index.md
+    except: ./$brain/conventions/index.md
+    frontmatter_values:
+      type: [decision]
 
   - henxel: "_todo.md lives beside the brain, gitignored — project management is not knowledge"
     why: >
@@ -305,6 +326,19 @@ each listed here. Undecided ideas belong in `_todo.md` or the journal.
 * (none yet)
 """
 
+_SEED_CONVENTIONS_INDEX = """# Conventions
+
+Decided rules and principles for HOW things get done — naming, process,
+contracts a team holds itself to. One kebab-case page per convention,
+`type: decision`, listed here. Not a specific piece of work (that is
+`plans/`) and not a step-by-step procedure (that is `skills/`) — a standing
+answer to a "how do we do this" question, applied broadly.
+
+## Conventions
+
+* (none yet)
+"""
+
 _SEED_SKILL = """---
 type: playbook
 title: Using the brain
@@ -335,12 +369,15 @@ changes, re-read before acting on what you remembered.
    project's, a team's, your personal one), the one closest to the
    implementation wins when they disagree.
 2. **`skills/`** — actionable, tested procedures. The purest layer.
-3. **`knowledge/`** — evergreen concepts, for the idea behind a skill or a
+3. **`conventions/`** — decided rules and principles for how things get
+   done, standing across many tasks. Check these before planning new work:
+   a convention can rule out an approach outright.
+4. **`knowledge/`** — evergreen concepts, for the idea behind a skill or a
    fact no skill covers yet.
-4. **`journals/`** — dated episodes, only when nothing distilled exists.
+5. **`journals/`** — dated episodes, only when nothing distilled exists.
    The current month is `journals/YYYY-MM.md`; older months are in
    `journals/archive/`.
-5. **`raw/`** — undistilled source material. Not in search results; grep it
+6. **`raw/`** — undistilled source material. Not in search results; grep it
    to ground a claim or to distil something new.
 
 With brainpick: `brain_overview` first, then `brain_search`, then
@@ -350,7 +387,9 @@ With brainpick: `brain_overview` first, then `brain_search`, then
 
 - **Information flows `journals/` → `knowledge/` → `skills/`.** An episode
   becomes a concept when it settles; a concept becomes a skill when it has
-  been carried out and works.
+  been carried out and works. A decision that settles into a standing rule
+  — applied broadly, not just this one time — becomes a `conventions/` page
+  instead, `type: decision`, alongside that flow rather than inside it.
 - **Journal under today's date.** Write into `journals/YYYY-MM.md` under a
   `## YYYY-MM-DD` heading (newest first; add today's if missing). **When a
   new month starts, move last month's file to `journals/archive/` first**
@@ -442,6 +481,7 @@ def brain_seeds() -> dict[str, str]:
         f"{b}/raw/index.md": _SEED_RAW_INDEX,
         f"{b}/vision/index.md": _SEED_VISION_INDEX,
         f"{b}/plans/index.md": _SEED_PLANS_INDEX,
+        f"{b}/conventions/index.md": _SEED_CONVENTIONS_INDEX,
         "_todo.md": _SEED_TODO,
         "brainpick.toml": _SEED_CONFIG.format(brain=b),
     }
