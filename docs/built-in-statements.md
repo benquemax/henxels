@@ -70,8 +70,8 @@ These suit a wiki or any cross-linked markdown:
 - **`max_files`** — a location holds at most N files *directly*; subfolders are not
   counted and `except:` removes files from the tally. The folder-level twin of
   `max_lines`: a working set stays small while history lives below it — e.g. a
-  `journals/` folder that may hold one current month while earlier months sit in
-  `journals/archive/` (see the [brainpick brain starter](brainpick-brain-starter.md)).
+  `journals/` folder that may hold only today's file while earlier days sit in
+  `journals/archive/YYYY/MM/` (see the [brainpick brain starter](brainpick-brain-starter.md)).
 
 ## Secrets
 

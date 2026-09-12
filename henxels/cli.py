@@ -332,7 +332,7 @@ def cmd_init(args) -> int:
         elif report.get("template") == "agentic-project":
             print("  • seed _todo.md, _vision/, _plans/ and gitignore _temp/")
         elif report.get("template") == "brainpick-brain":
-            print("  • scaffold _brain/ (knowledge, skills, journal, vision, plans), brainpick.toml, _todo.md")
+            print("  • scaffold _brain/ (knowledge, skills, journals, todo, vision, plans, conventions, raw), brainpick.toml")
         return 0
 
     state, info = report["contract"]
@@ -354,13 +354,13 @@ def cmd_init(args) -> int:
     elif report.get("template") == "agentic-project" and report.get("seeds"):
         print("✓ seeded _todo.md, _vision/, _plans/ — and gitignored _temp/")
     elif report.get("template") == "brainpick-brain" and report.get("seeds"):
-        print("✓ brain: scaffolded _brain/ (knowledge, skills, journal, vision, plans) + brainpick.toml, _todo.md")
+        print("✓ brain: scaffolded _brain/ (knowledge, skills, journals, todo, vision, plans, conventions, raw) + brainpick.toml")
         print("    next: `brainpick init` — detects the bundle, mints its id, compiles; then `brainpick mcp`")
         print("    the format and why: https://github.com/benquemax/brainpick/blob/main/docs/brain.md")
     checks_file = report.get("checks_file")
     if checks_file:
         mark, verb = ("✓", "created") if checks_file[0] == "created" else ("•", "already exists — kept")
-        print(f"{mark} henxels_checks.py {verb} (the log_headings_are_dates check)")
+        print(f"{mark} henxels_checks.py {verb} (the template's custom checks)")
     hooks = report.get("hooks")
     if hooks is None:
         print("• git hooks: skipped (not a git repo, or --no-hooks)")

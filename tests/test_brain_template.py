@@ -1,10 +1,13 @@
 """`henxels init --template brainpick-brain` — scaffold a brainpick-compatible brain.
 
-A brain is a wiki meant to be an agent's memory: `_brain/` with five memory-type
-folders (knowledge, skills, journal, vision, plans), a declared data flow
-(journal → knowledge → skills, read in reverse), inline grounding, and a first
+A brain is a wiki meant to be an agent's memory: `_brain/` with the memory-type
+folders (knowledge, skills, journals, vision, plans, conventions) plus the brain's
+own work queue (todo/) and raw source material, a declared data flow
+(journals → knowledge → skills, read in reverse), inline grounding, and a first
 skill that teaches the agent how to use and improve it. The format is
-brainpick's spec/85; this template is its scaffold. Green at birth, additive only.
+brainpick's spec/85 **brain format 2** — a journal file per day, to-do lists in
+the brain, a slow half-life; this template is its scaffold. Green at birth,
+additive only.
 """
 
 import datetime
@@ -17,18 +20,19 @@ from henxels.scaffold import BRAIN_DIR, init
 from henxels.statements.registry import all_statements
 
 TEMPLATE = "brainpick-brain"
-FOLDERS = ("knowledge", "skills", "journals", "vision", "plans", "conventions", "raw")
+FOLDERS = ("knowledge", "skills", "journals", "todo", "vision", "plans", "conventions", "raw")
 SEEDS = (
     "_brain/index.md",
     "_brain/log.md",
     "_brain/knowledge/index.md",
     "_brain/skills/using-the-brain.md",
     "_brain/journals/index.md",
+    "_brain/todo/index.md",
+    "_brain/todo/open.md",
     "_brain/vision/index.md",
     "_brain/plans/index.md",
     "_brain/conventions/index.md",
     "_brain/raw/index.md",
-    "_todo.md",
     "brainpick.toml",
 )
 
@@ -65,14 +69,18 @@ def test_first_skill_teaches_the_data_flow(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
     skill = _read(tmp_path, "_brain/skills/using-the-brain.md")
     assert skill.startswith("---\n")
-    assert "type: playbook" in skill
+    assert "type: skill" in skill  # a playbook is for humans; only type: skill is a skill
+    assert "type: playbook" not in skill
     assert "description: Use when" in skill  # a trigger, not a summary — it decides whether the body loads
     assert "export: agent-skill" in skill
-    for word in ("skills/", "knowledge/", "journals/", "raw/"):
+    for word in ("skills/", "knowledge/", "journals/", "todo/", "raw/"):
         assert word in skill
     assert "not the truth" in skill
     assert "closest" in skill  # subsidiarity
-    assert "archive/" in skill  # the month roll is the agent's job
+    assert "archive/YYYY/MM/" in skill  # the day roll is the agent's job
+    assert "todo/open.md" in skill and "(done: " in skill  # ticking and archiving a to-do
+    assert "brainpick skill new" in skill
+    assert "half_life" in skill  # steepen it when the lists silt up
     assert "clean" in skill  # raw/ is kept in order, not a dump
     assert "github.com/benquemax/brainpick" in skill  # the pointer onward
     assert _today() in skill
@@ -82,32 +90,79 @@ def test_brainpick_toml_declares_a_brain(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
     toml = _read(tmp_path, "brainpick.toml")
     assert "[bundle]" in toml and 'root = "_brain"' in toml
-    assert "[brain]" in toml and "format = 1" in toml
+    assert "[brain]" in toml and "format = 2" in toml
     assert "audience" in toml
     assert "\nid = " not in toml  # identity is minted by `brainpick init`, never by this template
 
 
-def test_todo_and_temp_stay_beside_the_brain(tmp_path):
+def test_brainpick_toml_fades_slowly_by_default(tmp_path):
+    """Memories fade (brainpick spec/50 half-life) — slowly, unless an agent notices the
+    lists silting up with stale material and steepens the curve on purpose."""
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    assert (tmp_path / "_todo.md").is_file()
-    assert not (tmp_path / "_brain" / "_todo.md").exists()
+    toml = _read(tmp_path, "brainpick.toml")
+    assert "[half_life]" in toml and "default = 365" in toml
+    assert "[half_life.folders]" in toml
+    assert re.search(r"(?m)^journals = \d+", toml)
+    assert re.search(r"(?m)^skills = 0", toml)  # procedural memory never fades
+    assert "steepen" in toml.lower()  # the knob explains itself
+
+
+def test_todo_lives_in_the_brain_and_temp_stays_beside_it(tmp_path):
+    """Format 2: open work is part of the brain (searchable), not a gitignored file beside it."""
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    assert not (tmp_path / "_todo.md").exists()
+    open_md = _read(tmp_path, "_brain/todo/open.md")
+    assert open_md.startswith("---\n") and "type: todo" in open_md
+    assert f"timestamp: {_today()}" in open_md
+    assert "- [ ]" in open_md  # a checklist, the shape brainpick compiles into todos.json
+    assert "[Open](open.md)" in _read(tmp_path, "_brain/todo/index.md")
     lines = _read(tmp_path, ".gitignore").splitlines()
     assert "_temp/" in lines and "brainpick.local.toml" in lines and ".brainpick/" in lines
-    # per-developer scratch, never shared — a merge-conflict magnet otherwise
-    assert "_todo.md" in lines
+    assert "_todo.md" not in lines
+    assert not any("_todo.md" in hx for hx in _read(tmp_path, "henxels.yaml").splitlines())
 
 
-def test_todo_henxel_warns_gitignored_and_says_check_before_planning(tmp_path):
+def test_contract_rejects_a_todo_doc_that_is_not_type_todo(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    contract = load_contract(tmp_path / "henxels.yaml")
-    apply_imports(contract, root=tmp_path)
-    todo = next(hx for hx in contract.henxels if "_todo.md" in hx.text)
-    assert todo.level == "warn"  # missing _todo.md is a reminder, not a blocker
-    assert "gitignored" in todo.text.lower()
-    assert "check" in todo.why.lower() and "before" in todo.why.lower()
-    assert "run_before_commit" in todo.statements  # enforces it stays gitignored
-    findings = _findings(tmp_path)
-    assert not any(f.is_block for f in findings)  # green at birth, including this one
+    (tmp_path / "_brain/todo/open.md").write_text(
+        "---\ntype: article\ntitle: Open\ndescription: Wrong type.\n"
+        f"timestamp: {_today()}T00:00:00Z\n---\n\n# Open\n\n- [ ] x\n", encoding="utf-8")
+    assert any("open.md" in str(f) for f in _findings(tmp_path))
+
+
+def _todo_doc(*lines, title="Open"):
+    body = "\n".join(lines)
+    return (f"---\ntype: todo\ntitle: {title}\ndescription: The list.\n"
+            f"timestamp: {_today()}T08:00:00Z\n---\n\n# {title}\n\n{body}\n")
+
+
+def test_done_items_leave_open_md_the_next_day(tmp_path):
+    """A `[x]` may sit in open.md on the day it was closed (dated); the next day the
+    contract insists it moves to todo/archive/YYYY-MM-DD.md — so open.md stays small and
+    "done" is an episode with a date, the shape brainpick's todos.json reads."""
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    open_md = tmp_path / "_brain/todo/open.md"
+    open_md.write_text(_todo_doc("- [ ] Descale the kettle", f"- [x] Buy filters (done: {_today()})"),
+                       encoding="utf-8")
+    assert _findings(tmp_path) == []  # closed today, archived tonight — fine
+    open_md.write_text(_todo_doc("- [x] Buy filters (done: 2020-01-01)"), encoding="utf-8")
+    assert any("open.md" in str(f) and "archive" in str(f) for f in _findings(tmp_path))
+    open_md.write_text(_todo_doc("- [x] Buy filters"), encoding="utf-8")  # undated: when was it done?
+    assert any("open.md" in str(f) and "(done: " in str(f) for f in _findings(tmp_path))
+
+
+def test_todo_archive_is_a_day_per_file_of_done_items(tmp_path):
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    archive = tmp_path / "_brain/todo/archive"
+    archive.mkdir()
+    (archive / "2020-01-01.md").write_text(_todo_doc("- [x] Buy filters (done: 2020-01-01)", title="2020-01-01"),
+                                           encoding="utf-8")
+    assert _findings(tmp_path) == []
+    (archive / "done-stuff.md").write_text(_todo_doc("- [x] Old (done: 2020-01-01)"), encoding="utf-8")
+    assert any("done-stuff.md" in str(f) for f in _findings(tmp_path))
+    (archive / "done-stuff.md").unlink()
+    (archive / "2020-01-02.md").write_text(_todo_doc("- [ ] Still open", title="2020-01-02"), encoding="utf-8")
+    assert any("2020-01-02.md" in str(f) for f in _findings(tmp_path))  # open items belong in open.md
 
 
 def test_contract_uses_known_statements_only(tmp_path):
@@ -126,7 +181,8 @@ def test_contract_covers_the_sixteen_rules(tmp_path):
         "brainpick compile --check-fresh",        # 1 fresh before commit
         "only_these_subfolders",                  # 2 folders are memory types
         "depends_on",                             # 3 skill tree
-        "type: [playbook]",                       # 3 skills are actionable
+        "type: [skill]",                          # 3 a skill is type: skill, never playbook
+        "skill_tools_exist",                      # 3 tools: paths land
         "allowed_filetypes",                      # 4 what counts as brain material
         "git check-ignore -q _temp",              # 5 scratch
         "required_frontmatter: [type, title, description]",  # 6
@@ -136,12 +192,16 @@ def test_contract_covers_the_sixteen_rules(tmp_path):
         "rooted_links_resolve",                   # 10
         "filename_matches_regex",                 # 11 journal naming
         "journals/archive",                       # 11 history without the bulk
+        "archived_journals_sit_under_year_month", # 11 archive/YYYY/MM/
+        "type: [todo]",                           # 12 to-do lists are in the brain
+        "done_todos_are_archived",                # 12 open.md stays open
         "no_secrets: true",                       # 13
         "brainpick.local.toml",                   # 13 local config never committed
         "min_outbound_links",                     # grounding
         "type: [decision]",                       # conventions/ holds decided rules only
     ):
         assert needle in text, f"contract lacks {needle!r}"
+    assert "type: [playbook]" not in text
     assert "github.com/benquemax/brainpick" in text  # the backlink
 
 
@@ -181,70 +241,71 @@ def test_contract_fails_ungrounded_knowledge(tmp_path):
     assert any("lonely.md" in str(f) for f in _findings(tmp_path))
 
 
-def _month():
-    return datetime.date.today().strftime("%Y-%m")
-
-
-def _journal(*days, up="../"):
-    body = "# Journal\n\n"
-    for day in days:
-        body += f"## {day}\n\n* Something happened. See [Using the brain]({up}skills/using-the-brain.md).\n\n"
+def _journal(*entries, up="../"):
+    body = "# Day\n\n"
+    for entry in entries:
+        body += f"## {entry}\n\n* Something happened. See [Using the brain]({up}skills/using-the-brain.md).\n\n"
     return body
 
 
-def test_scaffold_seeds_the_current_month_journal(tmp_path):
+def test_scaffold_seeds_todays_journal(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    month = tmp_path / "_brain/journals" / f"{_month()}.md"
-    assert month.is_file()
-    text = month.read_text(encoding="utf-8")
-    assert f"## {_today()}" in text
-    assert not text.startswith("---")  # a journal is a log: dated sections, no frontmatter
+    day = tmp_path / "_brain/journals" / f"{_today()}.md"
+    assert day.is_file()
+    text = day.read_text(encoding="utf-8")
+    assert not text.startswith("---")  # a journal is a log: no frontmatter
+    assert "using-the-brain.md" in text  # the entry points at what it changed
     assert not (tmp_path / "_brain/journals/archive").exists()  # born on the first roll
 
 
 def test_contract_fails_misnamed_journal_file(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    (tmp_path / "_brain/journals/notes.md").write_text(_journal(_today()), encoding="utf-8")
+    (tmp_path / "_brain/journals/notes.md").write_text(_journal("09:00"), encoding="utf-8")
     assert any("notes.md" in str(f) for f in _findings(tmp_path))
-
-
-def test_contract_fails_a_journal_heading_that_is_not_a_date(tmp_path):
-    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    month = tmp_path / "_brain/journals" / f"{_month()}.md"
-    month.write_text("# Journal\n\n## Monday\n\n* Stuff.\n", encoding="utf-8")
-    assert any(f"{_month()}.md" in str(f) for f in _findings(tmp_path))
-
-
-def test_contract_fails_journal_days_out_of_order(tmp_path):
-    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    month = tmp_path / "_brain/journals" / f"{_month()}.md"
-    month.write_text(_journal("2020-01-01", "2020-01-02"), encoding="utf-8")  # oldest first
-    assert any(f"{_month()}.md" in str(f) for f in _findings(tmp_path))
-
-
-def test_contract_fails_two_unarchived_months(tmp_path):
-    # a new month started and the old file was not rolled into archive/
-    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    (tmp_path / "_brain/journals/2020-01.md").write_text(_journal("2020-01-02", "2020-01-01"),
-                                                          encoding="utf-8")
+    (tmp_path / "_brain/journals/notes.md").unlink()
+    (tmp_path / "_brain/journals/2020-01.md").write_text(_journal("09:00"), encoding="utf-8")  # a format-1 month file
     assert any("2020-01.md" in str(f) for f in _findings(tmp_path))
 
 
-def test_archived_months_pass(tmp_path):
+def test_day_journal_headings_are_free(tmp_path):
+    """A day per file: the date is the file name, so headings inside may be times or titles."""
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    archive = tmp_path / "_brain/journals/archive"
-    archive.mkdir()
-    (archive / "2020-01.md").write_text(_journal("2020-01-02", "2020-01-01", up="../../"), encoding="utf-8")
-    (archive / "2020-02.md").write_text(_journal("2020-02-01", up="../../"), encoding="utf-8")
+    day = tmp_path / "_brain/journals" / f"{_today()}.md"
+    day.write_text(_journal("09:00", "Kettle descaled"), encoding="utf-8")
     assert _findings(tmp_path) == []
 
 
-def test_archive_rejects_a_misnamed_file(tmp_path):
+def test_contract_fails_two_unarchived_days(tmp_path):
+    # a new day started and yesterday's file was not rolled into archive/YYYY/MM/
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    (tmp_path / "_brain/journals/archive").mkdir()
-    (tmp_path / "_brain/journals/archive/old-notes.md").write_text(_journal("2020-01-01"),
-                                                                    encoding="utf-8")
+    (tmp_path / "_brain/journals/2020-01-01.md").write_text(_journal("09:00"), encoding="utf-8")
+    assert any("2020-01-01.md" in str(f) for f in _findings(tmp_path))
+
+
+def test_archived_days_pass_under_year_and_month(tmp_path):
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    archive = tmp_path / "_brain/journals/archive/2020/01"
+    archive.mkdir(parents=True)
+    (archive / "2020-01-01.md").write_text(_journal("09:00", up="../../../../"), encoding="utf-8")
+    (archive / "2020-01-02.md").write_text(_journal("Kettle", up="../../../../"), encoding="utf-8")
+    assert _findings(tmp_path) == []
+
+
+def test_archive_rejects_a_flat_pile_and_misnamed_files(tmp_path):
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    archive = tmp_path / "_brain/journals/archive"
+    archive.mkdir()
+    (archive / "2020-01-01.md").write_text(_journal("09:00", up="../../"), encoding="utf-8")  # flat: no YYYY/MM/
+    assert any("2020-01-01.md" in str(f) and "archive/2020/01/" in str(f) for f in _findings(tmp_path))
+    (archive / "2020-01-01.md").unlink()
+    (archive / "2020" / "01").mkdir(parents=True)
+    (archive / "2020" / "01" / "old-notes.md").write_text(_journal("09:00", up="../../../../"), encoding="utf-8")
     assert any("old-notes.md" in str(f) for f in _findings(tmp_path))
+    (archive / "2020" / "01" / "old-notes.md").unlink()
+    (archive / "2020" / "02").mkdir()
+    (archive / "2020" / "02" / "2020-01-31.md").write_text(_journal("09:00", up="../../../../"),
+                                                            encoding="utf-8")  # wrong month folder
+    assert any("2020-01-31.md" in str(f) for f in _findings(tmp_path))
 
 
 def test_raw_is_governed_but_not_okf(tmp_path):
@@ -263,15 +324,33 @@ def test_raw_is_excluded_from_brainpick_results(tmp_path):
     assert 'exclude = ["raw/' in toml  # grep it, ground on it, never surface it
 
 
-def test_contract_rejects_a_skill_that_is_not_a_playbook(tmp_path):
+def test_contract_rejects_a_skill_that_is_not_type_skill(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    (tmp_path / "_brain/skills/essay.md").write_text(
-        "---\ntype: article\ntitle: Essay\ndescription: Not a procedure.\n"
-        f"timestamp: {_today()}T00:00:00Z\n---\n\n# Essay\n\n"
-        "See [Using the brain](using-the-brain.md).\n",
+    for typ in ("article", "playbook"):  # a playbook is for humans; brainpick lists only type: skill
+        (tmp_path / "_brain/skills/essay.md").write_text(
+            f"---\ntype: {typ}\ntitle: Essay\ndescription: Not a skill.\n"
+            f"timestamp: {_today()}T00:00:00Z\n---\n\n# Essay\n\n"
+            "See [Using the brain](using-the-brain.md).\n",
+            encoding="utf-8",
+        )
+        assert any("essay.md" in str(f) for f in _findings(tmp_path)), typ
+
+
+def test_skill_tools_must_exist(tmp_path):
+    """`tools:` lists the scripts a skill drives, bundle-relative; brainpick indexes and
+    points at them, so a path that lands nowhere is a broken promise."""
+    init(tmp_path, install_git_hooks=False, template=TEMPLATE)
+    skill = tmp_path / "_brain/skills/brew.md"
+    skill.write_text(
+        "---\ntype: skill\ntitle: Brew\ndescription: Use when brewing.\n"
+        f"timestamp: {_today()}T00:00:00Z\ndepends_on: []\ntools: [skills/tools/brew.py]\n---\n\n"
+        "# Brew\n\nSee [Using the brain](using-the-brain.md).\n",
         encoding="utf-8",
     )
-    assert any("essay.md" in str(f) for f in _findings(tmp_path))
+    assert any("brew.md" in str(f) and "skills/tools/brew.py" in str(f) for f in _findings(tmp_path))
+    (tmp_path / "_brain/skills/tools").mkdir()
+    (tmp_path / "_brain/skills/tools/brew.py").write_text("print('brew')\n", encoding="utf-8")
+    assert _findings(tmp_path) == []
 
 
 def test_first_skill_pulls_before_reading(tmp_path):
@@ -283,7 +362,7 @@ def test_first_skill_pulls_before_reading(tmp_path):
     assert "Commit and push" in skill
 
 
-def test_contract_rejects_a_sixth_memory_type(tmp_path):
+def test_contract_rejects_an_extra_top_level_folder(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
     (tmp_path / "_brain" / "ideas").mkdir()
     (tmp_path / "_brain" / "ideas" / "x.md").write_text("# x\n", encoding="utf-8")
@@ -306,10 +385,11 @@ def test_compose_with_detected_project_type(tmp_path):
 # --- never clobber ----------------------------------------------------------
 
 def test_existing_seed_files_are_kept(tmp_path):
-    (tmp_path / "_todo.md").write_text("mine\n", encoding="utf-8")
+    (tmp_path / "_brain/todo").mkdir(parents=True)
+    (tmp_path / "_brain/todo/open.md").write_text("mine\n", encoding="utf-8")
     (tmp_path / "brainpick.toml").write_text('spec = "0.1"\n', encoding="utf-8")
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
-    assert _read(tmp_path, "_todo.md") == "mine\n"
+    assert _read(tmp_path, "_brain/todo/open.md") == "mine\n"
     assert _read(tmp_path, "brainpick.toml") == 'spec = "0.1"\n'
 
 

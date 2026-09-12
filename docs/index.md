@@ -24,8 +24,8 @@ keep agents and humans true to your repo's structure. These guides go deeper tha
   keep an agent-maintained wiki conformant.
 - [The agentic project starter](agentic-project-starter.md) — `_todo.md`, `_temp/`,
   `_vision/`, and `_plans/` for agent-driven work.
-- [The brainpick brain starter](brainpick-brain-starter.md) — a `_brain/` in the
-  brainpick brain format: your agent's memory, served by brainpick.
+- [The brainpick brain starter](brainpick-brain-starter.md) — a `_brain/` in
+  brainpick brain format 2: your agent's memory, served by brainpick.
 - [Upgrading](upgrading.md) — the version nag, the stale-schema nag, refreshing local
   files, schema evolution.
 

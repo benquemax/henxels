@@ -1,13 +1,16 @@
 """The brainpick brain starter (``henxels init --template brainpick-brain``).
 
 A brain is a wiki meant to be an agent's memory: ``_brain/`` with six memory-type
-folders (knowledge, skills, journal, vision, plans, conventions), a declared data
-flow (journal → knowledge → skills, read in reverse; a settled decision → a
-conventions page alongside it), inline grounding, and a first skill that teaches
-the agent how to use and improve it. brainpick's spec/85 fixes
-the format; this template scaffolds it — structure + contract live here, serving
-(``brainpick init``, compile, the ``brain_*`` MCP tools) is brainpick's half of the
-handoff: https://github.com/benquemax/brainpick
+folders (knowledge, skills, journals, vision, plans, conventions), the brain's own
+work queue (todo/), raw source material, a declared data flow (journals →
+knowledge → skills, read in reverse; a settled decision → a conventions page
+alongside it), inline grounding, and a first skill that teaches the agent how to
+use and improve it. brainpick's spec/85 fixes the format — this is **brain format
+2**: a journal file per day rolled into ``archive/YYYY/MM/``, to-do lists inside
+the brain as ``type: todo`` checklists, a slow half-life agents may steepen. This
+template scaffolds it — structure + contract live here, serving (``brainpick
+init``, compile, the ``brain_*`` MCP tools) is brainpick's half of the handoff:
+https://github.com/benquemax/brainpick
 """
 
 from __future__ import annotations
@@ -17,7 +20,9 @@ from pathlib import Path
 from string import Template
 
 BRAIN_DIR = "_brain"
-BRAIN_FOLDERS = ("knowledge", "skills", "journals", "vision", "plans", "conventions", "raw")
+BRAIN_FOLDERS = ("knowledge", "skills", "journals", "todo", "vision", "plans", "conventions", "raw")
+BRAIN_FORMAT = 2  # brainpick spec/85; bumped only with a migration path
+HALF_LIFE_DEFAULT_DAYS = 365  # slow by default — steepen on purpose when lists silt up
 BRAINPICK_URL = "https://github.com/benquemax/brainpick"
 
 BRAIN_SETTINGS = """
@@ -47,27 +52,29 @@ _BRAIN = Template("""
     required_files: brainpick.toml
     run_before_commit: brainpick compile --check-fresh
 
-  - henxel: "Folders are memory types — knowledge, skills, journals, vision, plans, conventions — one job each; raw/ is source material"
+  - henxel: "Folders are memory types — knowledge, skills, journals, vision, plans, conventions — one job each; todo/ is the work queue, raw/ is source material"
     why: >
       knowledge/ is semantic memory (evergreen concepts), skills/ procedural
       (distilled, actionable procedures), journals/ episodic (one file per
-      month, dated sections), vision/ direction (a book), plans/ decided
-      work, conventions/ decided rules and principles for HOW things get
-      done (standing policy — naming, process, contracts — not a specific
-      task like plans/, not a step-by-step procedure like skills/). raw/ is
-      not a memory type: it is undistilled source material (transcripts,
-      exports, clippings) that knowledge grounds on — governed for order,
-      exempt from OKF, and excluded from brainpick's results. Nothing is
-      replicated across layers. A memory type that does not fit these seven
-      is a `type` value or a sub-folder, never an eighth sibling. Read
-      skills/ first — it is the most distilled, tested and pure layer —
-      then conventions/, then knowledge/, then journals/; grep raw/ only to
-      ground or to distil.
+      day, rolled into archive/YYYY/MM/), vision/ direction (a book), plans/
+      decided work, conventions/ decided rules and principles for HOW things
+      get done (standing policy — naming, process, contracts — not a
+      specific task like plans/, not a step-by-step procedure like skills/).
+      todo/ is not a memory type: it is the brain's own work queue — open.md
+      the live checklist, archive/YYYY-MM-DD.md what was closed that day —
+      kept in the brain so it is searchable and counted. raw/ is not one
+      either: undistilled source material (transcripts, exports, clippings)
+      that knowledge grounds on — governed for order, exempt from OKF, and
+      excluded from brainpick's results. Nothing is replicated across
+      layers. A memory type that does not fit is a `type` value or a
+      sub-folder, never a new sibling. Read skills/ first — it is the most
+      distilled, tested and pure layer — then conventions/, then
+      knowledge/, then journals/; grep raw/ only to ground or to distil.
       Data flow architecture: $url/blob/main/docs/data-flow-architecture.md
     in: ./$brain
     required_files: index.md
-    required_subfolders: [knowledge, skills, journals, vision, plans, conventions, raw]
-    only_these_subfolders: [knowledge, skills, journals, vision, plans, conventions, raw]
+    required_subfolders: [knowledge, skills, journals, todo, vision, plans, conventions, raw]
+    only_these_subfolders: [knowledge, skills, journals, todo, vision, plans, conventions, raw]
 
   - henxel: "Brain material is markdown plus small data and scripts; scratch is _temp/"
     why: >
@@ -98,14 +105,14 @@ _BRAIN = Template("""
       description containing `: ` must be quoted. Follows the Open Knowledge
       Format: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
     in: ./$brain/*
-    except: ["**/index.md", "**/log.md", "**/skilltree.md", "$brain/journals/**", "$brain/raw/**"]
+    except: ["**/index.md", "**/log.md", "**/skilltree.md", "$brain/journals/**", "$brain/raw/**", "$brain/skills/tools/**"]
     allowed_filetypes: .md
     filename_casing: kebab-case
     required_frontmatter: [type, title, description]
 
   - henxel: "Freshness is explicit — timestamp is a real ISO 8601 datetime bumped whenever a doc changes"
     in: ./$brain/*
-    except: ["**/index.md", "**/log.md", "**/skilltree.md", "$brain/journals/**", "$brain/raw/**"]
+    except: ["**/index.md", "**/log.md", "**/skilltree.md", "$brain/journals/**", "$brain/raw/**", "$brain/skills/tools/**"]
     frontmatter_dates: { timestamp: datetime }
     bump_updated_on_change: timestamp
 
@@ -121,54 +128,60 @@ _BRAIN = Template("""
     except: ["**/index.md", "**/skilltree.md"]
     min_outbound_links: 1
 
-  - henxel: "Skills are actionable playbooks that form a dependency tree — declare depends_on, never edit skilltree.md"
+  - henxel: "Skills are type: skill and form a dependency tree — declare depends_on, list tools that exist, never edit skilltree.md"
     why: >
-      A skill is a procedure a reader follows (type: playbook). It lists the
-      skills it assumes in `depends_on` frontmatter (bundle-relative .md
-      paths; omit it or use `[]` when it assumes nothing). skilltree.md is
+      A skill is a procedure an AGENT follows: `type: skill`, the one value
+      brainpick recognises, lists first and boosts in search (a `playbook`
+      is a how-to for humans and is not a skill). It lists the skills it
+      assumes in `depends_on` frontmatter (bundle-relative .md paths; omit
+      it or use `[]` when it assumes nothing) and the deterministic scripts
+      it drives in `tools` (bundle-relative paths that must exist — brainpick
+      indexes and points at them, never runs them). skilltree.md is
       generated from those edges by brainpick — edit the skills, never the
       tree. A skill with `export: agent-skill` is also written out as a
-      harness-loaded SKILL.md, so the brain's procedures reach the agent
-      before it decides anything.
+      harness-loaded SKILL.md pointer by `brainpick integrate`, so the
+      brain's procedures reach the agent before it decides anything. Start
+      one with `brainpick skill new <name>`.
     in: ./$brain/skills/*
-    except: ["**/index.md", "**/skilltree.md"]
+    except: ["**/index.md", "**/skilltree.md", "$brain/skills/tools/**"]
     frontmatter_values:
-      type: [playbook]
+      type: [skill]
+    skill_tools_exist: ./$brain    # custom check, lives in henxels_checks.py
 
-  - henxel: "One journal file per month — journals/YYYY-MM.md — with a ## YYYY-MM-DD section per day, newest first"
+  - henxel: "One journal file per day — journals/YYYY-MM-DD.md — entries newest first under any heading"
     why: >
-      Journals are episodic memory: what happened, when. A month per file
-      caps the length forever; a day per section keeps it navigable. Every
-      heading is an ISO date. An entry links forward to the knowledge or
-      skill it changed instead of restating it (DRY by pointer, in the
-      direction of distillation); when you distil an entry, add the pointer
-      to it. Journals are logs, not concept docs: no frontmatter.
+      Journals are episodic memory: what happened, when. A day per file
+      caps the length forever and gives brainpick's half-life a file-level
+      unit; the date is the file name, so headings inside are free (`##
+      HH:MM` or a title). An entry links forward to the knowledge or skill
+      it changed instead of restating it (DRY by pointer, in the direction
+      of distillation); when you distil an entry, add the pointer to it.
+      Journals are logs, not concept docs: no frontmatter.
     in: ./$brain/journals
     except: ./$brain/journals/index.md
     allowed_filetypes: .md
-    filename_matches_regex: '^\\d{4}-\\d{2}\\.md$$'
+    filename_matches_regex: '^\\d{4}-\\d{2}-\\d{2}\\.md$$'
     no_frontmatter: true
-    log_headings_are_dates: true    # custom check, lives in henxels_checks.py
 
-  - henxel: "Only the current month stays in journals/ — earlier months move to journals/archive/"
+  - henxel: "Only today stays in journals/ — every earlier day moves to journals/archive/YYYY/MM/"
     why: >
-      History without the bulk: when a new month starts, move last month's
-      file to journals/archive/ (same name; mkdir -p it the first time)
-      before writing the first entry.
-      Two unarchived months block the commit, so the roll cannot be
-      forgotten. Archived months are read-only history and keep their
-      dated-section shape; brainpick indexes both.
+      History without the bulk: before the first entry of a new day, move
+      yesterday's file to journals/archive/YYYY/MM/ (same name; mkdir -p it
+      the first time). Two unarchived days block the commit, so the roll
+      cannot be forgotten. Archived days are read-only history; brainpick
+      indexes both, and a grounding link to a day is a link to its file, no
+      anchor: ../journals/archive/2026/09/2026-09-07.md.
     in: ./$brain/journals
     except: ./$brain/journals/index.md
     only_these_subfolders: [archive]
     max_files: 1
 
-  - henxel: "Archived journals are month files with dated sections, untouched otherwise"
-    in: ./$brain/journals/archive
+  - henxel: "Archived journals sit under archive/YYYY/MM/, one day per file, untouched otherwise"
+    in: ./$brain/journals/archive/*
     allowed_filetypes: .md
-    filename_matches_regex: '^\\d{4}-\\d{2}\\.md$$'
+    filename_matches_regex: '^\\d{4}-\\d{2}-\\d{2}\\.md$$'
     no_frontmatter: true
-    log_headings_are_dates: true
+    archived_journals_sit_under_year_month: ./$brain/journals/archive    # custom check, lives in henxels_checks.py
 
   - henxel: "Every link lands — bundle-absolute (/a/b.md) and relative alike"
     in: ./$brain/*
@@ -195,8 +208,8 @@ _BRAIN = Template("""
 
   - henxel: "plans/ holds DECIDED work only, every plan listed in its index"
     why: >
-      Undecided ideas belong in _todo.md (a task) or journals/ (an insight),
-      not here.
+      Undecided ideas belong in todo/open.md (a task) or journals/ (an
+      insight), not here.
     in: ./$brain/plans
     required_files: index.md
     referenced_in: ./$brain/plans/index.md
@@ -218,19 +231,25 @@ _BRAIN = Template("""
     frontmatter_values:
       type: [decision]
 
-  - henxel: "_todo.md lives beside the brain, gitignored — project management is not knowledge"
+  - henxel: "todo/ is the brain's work queue — open.md the live type: todo checklist, done items archived by day"
     why: >
-      Tasks that surface mid-work go to _todo.md instead of derailing the
-      task at hand. It is neither evergreen nor an episode, so it is not in
-      $brain/. Per-developer, not shared: gitignored, so it is never a
-      merge-conflict magnet and never silently public. Check it before
-      planning any new work — it may already flag a known imperfection, a
-      planned deprecation, or something overlapping the task, and building
-      more onto a feature already marked for removal wastes the work twice.
-    in: .
-    required_files: _todo.md
-    level: warn
-    run_before_commit: git check-ignore -q _todo.md
+      Open work is part of the brain, so it is searchable and counted:
+      brainpick compiles every `- [ ]` / `- [x]` line of a `type: todo` doc
+      into todos.json, the overview says how many are open, and a search
+      hit on a list carries its counts. Tasks that surface mid-work go to
+      todo/open.md instead of derailing the task at hand; check it before
+      planning any new work — it may already flag a known imperfection or
+      something overlapping the task. A ticked item ends in `(done:
+      YYYY-MM-DD)` and moves to todo/archive/YYYY-MM-DD.md — the day it was
+      closed — the next day at the latest, so open.md stays small and
+      "done" is an episode with a date. The archive holds only done items.
+    in: ./$brain/todo/*
+    except: ./$brain/todo/index.md
+    required_files: [index.md, open.md]
+    only_these_subfolders: [archive]
+    frontmatter_values:
+      type: [todo]
+    done_todos_are_archived: ./$brain/todo    # custom check, lives in henxels_checks.py
 
   - henxel: "_temp stays gitignored"
     why: >
@@ -271,11 +290,12 @@ _SEED_LOG = """# Brain update log
 
 _SEED_JOURNALS_INDEX = """# Journals
 
-Episodic memory — what happened, when. One file per month (`YYYY-MM.md`), one
-`## YYYY-MM-DD` section per day, newest first. Only the current month lives
-here; when a new month starts, move the previous file into `archive/`
-(`mkdir -p` it the first time) before writing the first entry. Entries point to the knowledge or skill they changed
-instead of restating it.
+Episodic memory — what happened, when. One file per day (`YYYY-MM-DD.md`),
+entries newest first under any heading (`## HH:MM` or a title). Only today
+lives here; before the first entry of a new day, move yesterday's file into
+`archive/YYYY/MM/` (`mkdir -p` it the first time). Entries point to the
+knowledge or skill they changed instead of restating it. A link to a day is
+a link to its file: `archive/2026/09/2026-09-07.md`.
 """
 
 _SEED_RAW_INDEX = """# Raw
@@ -291,11 +311,35 @@ excludes this folder from search results; grep it.
 (none yet)
 """
 
-_SEED_JOURNAL_MONTH = """# {month}
+_SEED_JOURNAL_DAY = """# {today}
 
-## {today}
+## Brain created
 
-* Brain created. First skill: [Using the brain](../skills/using-the-brain.md).
+* First skill: [Using the brain](../skills/using-the-brain.md).
+"""
+
+_SEED_TODO_INDEX = """# Todo
+
+The brain's own work queue: `open.md` is the live list, `archive/` holds what
+was closed, one file per day (`YYYY-MM-DD.md`).
+
+- [Open](open.md)
+"""
+
+_SEED_TODO_OPEN = """---
+type: todo
+title: Open
+description: What is still to be done — the brain's live work queue.
+timestamp: {today}T00:00:00Z
+---
+
+# Open
+
+Tasks that surface mid-work land here instead of derailing the task at hand.
+Check this list before planning new work. Tick an item as `- [x] … (done:
+YYYY-MM-DD)` and move it to `archive/YYYY-MM-DD.md` the same or the next day.
+
+- [ ] Write the first knowledge page and ground it in today's journal
 """
 
 _SEED_KNOWLEDGE_INDEX = """# Knowledge
@@ -319,7 +363,7 @@ listed here — an unlisted chapter is not part of the vision.
 _SEED_PLANS_INDEX = """# Plans
 
 Written plans for work that has been decided — one kebab-case page per plan,
-each listed here. Undecided ideas belong in `_todo.md` or the journal.
+each listed here. Undecided ideas belong in `../todo/open.md` or the journal.
 
 ## Plans
 
@@ -340,7 +384,7 @@ answer to a "how do we do this" question, applied broadly.
 """
 
 _SEED_SKILL = """---
-type: playbook
+type: skill
 title: Using the brain
 description: Use when reading from or writing to this project's brain — before answering from memory, before grepping, and before adding or changing any doc in _brain/.
 timestamp: {today}T00:00:00Z
@@ -375,9 +419,11 @@ changes, re-read before acting on what you remembered.
 4. **`knowledge/`** — evergreen concepts, for the idea behind a skill or a
    fact no skill covers yet.
 5. **`journals/`** — dated episodes, only when nothing distilled exists.
-   The current month is `journals/YYYY-MM.md`; older months are in
-   `journals/archive/`.
-6. **`raw/`** — undistilled source material. Not in search results; grep it
+   Today is `journals/YYYY-MM-DD.md`; earlier days are in
+   `journals/archive/YYYY/MM/`.
+6. **`todo/open.md`** — the brain's open work. Check it before planning:
+   it may already flag what you are about to rediscover.
+7. **`raw/`** — undistilled source material. Not in search results; grep it
    to ground a claim or to distil something new.
 
 With brainpick: `brain_overview` first, then `brain_search`, then
@@ -390,11 +436,21 @@ With brainpick: `brain_overview` first, then `brain_search`, then
   been carried out and works. A decision that settles into a standing rule
   — applied broadly, not just this one time — becomes a `conventions/` page
   instead, `type: decision`, alongside that flow rather than inside it.
-- **Journal under today's date.** Write into `journals/YYYY-MM.md` under a
-  `## YYYY-MM-DD` heading (newest first; add today's if missing). **When a
-  new month starts, move last month's file to `journals/archive/` first**
-  (`mkdir -p _brain/journals/archive && git mv …`) — the contract blocks a
-  commit with two unarchived months.
+- **Journal in today's file.** Write into `journals/YYYY-MM-DD.md` (create
+  it on the first entry of the day; headings inside are free — `## HH:MM`
+  or a title, newest first). **Before the first entry of a new day, move
+  yesterday's file to `journals/archive/YYYY/MM/`**
+  (`mkdir -p _brain/journals/archive/YYYY/MM && git mv …`) — the contract
+  blocks a commit with two unarchived days.
+- **To-dos live in `todo/open.md`.** A task that surfaces mid-work goes
+  there as `- [ ] …`. When it is done, tick it `- [x] … (done: YYYY-MM-DD)`
+  and move the line to `todo/archive/YYYY-MM-DD.md` (a `type: todo` doc
+  for that day; create it on first use) — the same day or the next, the
+  contract insists. Never edit the archive afterwards.
+- **A procedure that works becomes a skill**: `brainpick skill new <name>`
+  scaffolds `skills/<name>.md` as `type: skill` with `depends_on` and
+  `tools` (paths to the deterministic scripts it drives — put them in
+  `skills/tools/`). A `playbook` is a how-to for humans and is not a skill.
 - **DRY by pointer.** When you distil, the less distilled doc gains a
   pointer to the more distilled one ("now covered by [skill]") — never a
   copy. The journal points to what it changed and never restates it.
@@ -408,6 +464,12 @@ With brainpick: `brain_overview` first, then `brain_search`, then
 - **Reading a less distilled layer is a distillation opportunity.** If the
   answer was in the journal, ask whether it should now be knowledge.
 - **Bump `timestamp`** on every change; keep `type`, `title`, `description`.
+  The timestamp is also what the half-life reads: memories fade in search
+  ranking as they age, slowly by default (`[half_life]` in
+  `brainpick.toml`). When you notice the lists silting up with stale
+  material, steepen the curve there — shorter days for `journals` or
+  `todo`, or a per-page `half_life:` in frontmatter — rather than deleting;
+  nothing is ever hidden, it only ranks lower.
 - **Commit and push what you changed** (the contract checks it on commit)
   so the next reader's pull brings your version — memory that stays on one
   machine is not shared memory.
@@ -443,23 +505,138 @@ exclude = ["raw/*"]     # source material stays greppable but never surfaces in 
 mode = "section"        # brainpick owns a generated block at the end of index.md
 
 [brain]
-format = 1              # the brainpick brain format (spec/85)
+format = {format}              # the brainpick brain format (spec/85): day journals, todo/ in the brain
 audience = "personal"   # personal | team | public — who this brain is written for
 # origin = ""           # canonical git URL, once this repo has one
 # readers = []          # for team: who reads it, by handle or role
+
+# Memories fade — a ranking factor, never a deletion: a doc's search score is
+# multiplied by 2^(-age/half_life) on its `timestamp`, floored so it stays
+# recallable. Slow by default. When the lists silt up with stale material,
+# STEEPEN the curve here (fewer days) instead of deleting; a single page can
+# pin itself with `half_life: 0` in its frontmatter or let go with `half_life: 7`.
+[half_life]
+default = {half_life}           # days; 0 = never fades
+[half_life.folders]     # folder → days, the most nested folder wins
+journals = 180          # episodic memory fades first
+todo = 90               # an open list should be a fresh list
+skills = 0              # procedural memory never fades
 """
 
-_SEED_TODO = (
-    "# Parking lot\n\n"
-    "Tasks that surface mid-work but fall outside its scope land here instead of\n"
-    "derailing the task at hand. Project management, not knowledge — that is why\n"
-    "this file lives beside the brain, not in it. Per-developer and gitignored —\n"
-    "never committed, never a merge-conflict magnet. Check it before planning\n"
-    "new work: it may already flag a known imperfection, a planned deprecation,\n"
-    "or something overlapping the task.\n"
-)
+# Ships with the template: the brain's custom checks (henxels_checks.py). The
+# log_headings_are_dates check is the same one the OKF wiki template scaffolds.
+BRAIN_CHECKS_PY = '''"""Custom checks for the brain (scaffolded by `henxels init --template brainpick-brain`)."""
 
-GITIGNORE_ENTRIES = ("_temp/", "brainpick.local.toml", ".brainpick/", "_todo.md")
+import datetime
+import re
+
+import yaml
+
+from henxels import statement
+
+_SECTION = re.compile(r"^##\\s+(.+?)\\s*$")
+_DAY = re.compile(r"^(\\d{4})-(\\d{2})-(\\d{2})\\.md$")
+_CHECKBOX = re.compile(r"^\\s*[-*+]\\s+\\[([ xX])\\]\\s+(.*?)\\s*$")
+_DONE = re.compile(r"\\(done:\\s*(\\d{4}-\\d{2}-\\d{2})\\)\\s*$")
+
+
+def _folder(param):
+    return str(param).strip().removeprefix("./").strip("/")
+
+
+def _frontmatter(text):
+    """The leading ``---`` YAML block as a dict (empty when absent or unparseable)."""
+    if not text or not text.startswith("---"):
+        return {}
+    lines = text.splitlines()
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if end is None:
+        return {}
+    try:
+        data = yaml.safe_load("\\n".join(lines[1:end]))
+    except yaml.YAMLError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+@statement("log_headings_are_dates", help="log.md sections are '## YYYY-MM-DD' headings, newest first")
+def log_headings_are_dates(file, scope):
+    dates, problems = [], []
+    for line in (scope.read_text(file) or "").splitlines():
+        m = _SECTION.match(line)
+        if not m:
+            continue
+        try:
+            dates.append(datetime.date.fromisoformat(m.group(1)))
+        except ValueError:
+            problems.append(f"section '{m.group(1)}' — head log sections with an ISO date: ## YYYY-MM-DD")
+    if dates != sorted(dates, reverse=True):
+        problems.append("order the date sections newest first")
+    return problems
+
+
+@statement("skill_tools_exist", help="every path a skill lists under `tools:` exists, relative to the bundle root")
+def skill_tools_exist(param, file, scope):
+    """brainpick indexes and points at a skill's tools (spec/85); a path that lands
+    nowhere is a broken promise. `param` is the bundle root (./_brain)."""
+    root = _folder(param)
+    tools = _frontmatter(scope.read_text(file)).get("tools") or []
+    if not isinstance(tools, list):
+        return f"{file} — `tools:` must be a list of bundle-relative paths"
+    missing = [t for t in tools if not scope.exists(f"{root}/{str(t).lstrip('/')}")]
+    return [f"{file} — tool {t} does not exist under {root}/ (add it or drop it from `tools:`)" for t in missing]
+
+
+@statement("archived_journals_sit_under_year_month",
+           help="archived journal days live at archive/YYYY/MM/YYYY-MM-DD.md, the folders matching the name")
+def archived_journals_sit_under_year_month(param, file, scope):
+    """`param` is the archive folder (./_brain/journals/archive)."""
+    archive = _folder(param)
+    rel = file[len(archive) + 1:] if file.startswith(archive + "/") else file
+    name = rel.rsplit("/", 1)[-1]
+    m = _DAY.match(name)
+    if not m:
+        return f"{file} — name an archived day YYYY-MM-DD.md"
+    want = f"{m.group(1)}/{m.group(2)}/{name}"
+    if rel != want:
+        return f"{file} — move it to {archive}/{want} (the day roll keeps archive/YYYY/MM/)"
+    return None
+
+
+@statement("done_todos_are_archived",
+           help="a [x] item in open.md carries (done: YYYY-MM-DD) and leaves for archive/YYYY-MM-DD.md the next day; "
+                "the archive is day files holding only done items")
+def done_todos_are_archived(param, file, scope):
+    """`param` is the todo folder (./_brain/todo)."""
+    todo = _folder(param)
+    rel = file[len(todo) + 1:] if file.startswith(todo + "/") else file
+    problems = []
+    items = [(m.group(1).lower() == "x", m.group(2)) for m in map(_CHECKBOX.match, (scope.read_text(file) or "").splitlines()) if m]
+    if rel == "open.md":
+        today = datetime.date.today()
+        for done, text in items:
+            if not done:
+                continue
+            m = _DONE.search(text)
+            if not m:
+                problems.append(f"{file} — '{text[:40]}' is ticked but undated: end it with (done: YYYY-MM-DD)")
+                continue
+            day = m.group(1)
+            if datetime.date.fromisoformat(day) < today:
+                problems.append(f"{file} — '{text[:40]}' was done {day}: move the line to {todo}/archive/{day}.md")
+        return problems
+    if rel.startswith("archive/"):
+        name = rel.rsplit("/", 1)[-1]
+        if "/" in rel[len("archive/"):] or not _DAY.match(name):
+            return f"{file} — an archived to-do file is {todo}/archive/YYYY-MM-DD.md, the day its items were closed"
+        for done, text in items:
+            if not done:
+                problems.append(f"{file} — '{text[:40]}' is still open: it belongs in {todo}/open.md, not the archive")
+        return problems
+    return None
+'''
+
+GITIGNORE_ENTRIES = ("_temp/", "brainpick.local.toml", ".brainpick/")
 
 
 def brain_fragment() -> str:
@@ -469,7 +646,6 @@ def brain_fragment() -> str:
 
 def brain_seeds() -> dict[str, str]:
     today = datetime.date.today().isoformat()
-    month = today[:7]
     b = BRAIN_DIR
     return {
         f"{b}/index.md": _SEED_INDEX,
@@ -477,13 +653,14 @@ def brain_seeds() -> dict[str, str]:
         f"{b}/knowledge/index.md": _SEED_KNOWLEDGE_INDEX,
         f"{b}/skills/using-the-brain.md": _SEED_SKILL.format(today=today, url=BRAINPICK_URL),
         f"{b}/journals/index.md": _SEED_JOURNALS_INDEX,
-        f"{b}/journals/{month}.md": _SEED_JOURNAL_MONTH.format(month=month, today=today),
+        f"{b}/journals/{today}.md": _SEED_JOURNAL_DAY.format(today=today),
+        f"{b}/todo/index.md": _SEED_TODO_INDEX,
+        f"{b}/todo/open.md": _SEED_TODO_OPEN.format(today=today),
         f"{b}/raw/index.md": _SEED_RAW_INDEX,
         f"{b}/vision/index.md": _SEED_VISION_INDEX,
         f"{b}/plans/index.md": _SEED_PLANS_INDEX,
         f"{b}/conventions/index.md": _SEED_CONVENTIONS_INDEX,
-        "_todo.md": _SEED_TODO,
-        "brainpick.toml": _SEED_CONFIG.format(brain=b),
+        "brainpick.toml": _SEED_CONFIG.format(brain=b, format=BRAIN_FORMAT, half_life=HALF_LIFE_DEFAULT_DAYS),
     }
 
 

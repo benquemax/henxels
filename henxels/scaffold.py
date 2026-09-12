@@ -19,6 +19,7 @@ from henxels.engine.discover import DEFAULT_EXCLUDES
 from henxels.engine.gitinfo import is_git_repo, shadowing_hooks_path
 from henxels.hooks import install_hooks
 from henxels.scaffold_brain import (  # noqa: F401 — BRAIN_DIR is part of this module's public surface
+    BRAIN_CHECKS_PY,
     BRAIN_DIR,
     BRAIN_SETTINGS,
     brain_fragment,
@@ -475,7 +476,8 @@ def init(
         if checks_path.exists():
             report["checks_file"] = ("exists", "henxels_checks.py")
         else:
-            checks_path.write_text(_OKF_CHECKS_PY, encoding="utf-8")
+            checks_py = BRAIN_CHECKS_PY if template == "brainpick-brain" else _OKF_CHECKS_PY
+            checks_path.write_text(checks_py, encoding="utf-8")
             report["checks_file"] = ("created", "henxels_checks.py")
 
     if template == "okf-llm-wiki" and mode == "scaffolded" and report["contract"][0] == "created":
