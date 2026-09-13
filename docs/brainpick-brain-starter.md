@@ -1,6 +1,6 @@
 ---
 title: The brainpick brain starter
-summary: The brainpick-brain template — a _brain/ in brainpick brain format 2 (knowledge, skills, journals by day, todo, vision, plans, conventions, plus raw source material), a slow half-life, a first skill that teaches the agent how to use it, and the henxels that keep the data flow honest.
+summary: The brainpick-brain template — a _brain/ in brainpick brain format 3 (knowledge, skills, journals by day, todo, vision, plans, conventions, plus raw source material), a slow half-life, a first skill that teaches the agent how to use it, and the henxels that keep the data flow honest.
 ---
 
 # The brainpick brain starter
@@ -41,9 +41,9 @@ _brain/
   raw/                undistilled source material — transcripts, exports, clippings
   vision/             direction — the northstar, written as a book
   plans/              decided work
-  conventions/        decided rules and principles — how things get done, standing
+  conventions/        standing rules — how things get done, type: convention, read first
 _temp/                gitignored scratch (never in the brain)
-brainpick.toml        shared policy: [bundle] root + exclude, [index] mode, [brain] format = 2, [half_life]
+brainpick.toml        shared policy: [bundle] root + exclude, [index] mode, [brain] format = 3, [half_life]
 ```
 
 The six folders `knowledge/ skills/ journals/ vision/ plans/ conventions/` are
@@ -56,7 +56,7 @@ finds them in search. `raw/` is the material memory is made from — kept orderl
 and greppable, and excluded from the compiled brain (`exclude = ["raw/*"]` in
 `brainpick.toml`) because it is noisy by nature.
 Information flows in one direction — **raw → journals → knowledge → skills**,
-with a settled decision breaking off into `conventions/` (`type: decision`)
+with a settled decision breaking off into `conventions/` (`type: convention`)
 instead when it applies broadly rather than to one task — and is read in
 reverse, most distilled first: skills are the purest, most tested layer, the
 journals the rawest that still counts as memory. Reading a less distilled
@@ -116,7 +116,7 @@ does the content move; the contract is the agent's:
 humans and brainpick does not list it as a skill) written for the agent: **pull the brain's
 latest version before reading anything** (it is shared memory — others commit to it
 between sessions, and a stale checkout is knowledge the brain has already
-corrected); then read the closest brain first, then `skills/`, then `conventions/`, then
+corrected); then read the closest brain first, then `conventions/`, then `skills/`, then
 `knowledge/`, then `journals/`, then `todo/open.md`, and `raw/` only by grep to ground or to distil; roll the day;
 tick and archive to-dos; distil a procedure that works into a skill (`brainpick skill new`);
 steepen the half-life when the lists silt up; distil upward, commit and push what you changed, and
@@ -163,7 +163,8 @@ type (python, node, or generic):
   `log.md` files stay frontmatter-free; update logs are date-sectioned.
 - **`vision/` is a book, `plans/` holds decided work, `conventions/` holds decided
   rules** — each with an index every page is listed in; `conventions/` pages are
-  also restricted to `type: decision`.
+  also restricted to `type: convention` (brainpick brain format 3 — an older
+  brain's `type: decision` stamp is corrected by `brainpick migrate --to 3`).
 - **`_temp/` and `brainpick.local.toml` stay gitignored, and no credentials
   anywhere.**
 

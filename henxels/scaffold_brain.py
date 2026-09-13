@@ -21,7 +21,7 @@ from string import Template
 
 BRAIN_DIR = "_brain"
 BRAIN_FOLDERS = ("knowledge", "skills", "journals", "todo", "vision", "plans", "conventions", "raw")
-BRAIN_FORMAT = 2  # brainpick spec/85; bumped only with a migration path
+BRAIN_FORMAT = 3  # brainpick spec/85; bumped only with a migration path
 HALF_LIFE_DEFAULT_DAYS = 365  # slow by default — steepen on purpose when lists silt up
 BRAINPICK_URL = "https://github.com/benquemax/brainpick"
 
@@ -67,9 +67,10 @@ _BRAIN = Template("""
       that knowledge grounds on — governed for order, exempt from OKF, and
       excluded from brainpick's results. Nothing is replicated across
       layers. A memory type that does not fit is a `type` value or a
-      sub-folder, never a new sibling. Read skills/ first — it is the most
-      distilled, tested and pure layer — then conventions/, then
-      knowledge/, then journals/; grep raw/ only to ground or to distil.
+      sub-folder, never a new sibling. Read conventions/ first — a rule
+      constrains what any other read is for — then skills/, the most
+      distilled, tested and pure layer, then knowledge/, then journals/;
+      grep raw/ only to ground or to distil.
       Data flow architecture: $url/blob/main/docs/data-flow-architecture.md
     in: ./$brain
     required_files: index.md
@@ -220,16 +221,18 @@ _BRAIN = Template("""
       A convention is a standing answer to "how do we do this" — naming,
       process, a contract a team holds itself to — decided once and applied
       broadly, unlike plans/ (one specific piece of work) or skills/ (a
-      procedure to execute). type: decision keeps it distinct from
-      knowledge/'s general concepts; ground each one the same way any other
-      claim is grounded (the decision episode, an external source, or a
-      stated assumption).
+      procedure to execute). type: convention (brainpick brain format 3)
+      is the standing RESULT of a decision, edited as practice evolves —
+      not the decision record itself — and it is what brainpick lists
+      first in brain_overview and the AGENTS.md report; ground each one
+      the same way any other claim is grounded (the decision episode, an
+      external source, or a stated assumption).
     in: ./$brain/conventions
     required_files: index.md
     referenced_in: ./$brain/conventions/index.md
     except: ./$brain/conventions/index.md
     frontmatter_values:
-      type: [decision]
+      type: [convention]
 
   - henxel: "todo/ is the brain's work queue — open.md the live type: todo checklist, done items archived by day"
     why: >
@@ -372,11 +375,11 @@ each listed here. Undecided ideas belong in `../todo/open.md` or the journal.
 
 _SEED_CONVENTIONS_INDEX = """# Conventions
 
-Decided rules and principles for HOW things get done — naming, process,
-contracts a team holds itself to. One kebab-case page per convention,
-`type: decision`, listed here. Not a specific piece of work (that is
-`plans/`) and not a step-by-step procedure (that is `skills/`) — a standing
-answer to a "how do we do this" question, applied broadly.
+Standing rules for how work is done here — naming, process, contracts the
+brain's keepers hold themselves to. One kebab-case page per rule,
+`type: convention`, listed here. Not a specific piece of work (that is
+`plans/`), not a step-by-step procedure (that is `skills/`), not the record
+of choosing (that is a `decision`) — the standing answer, applied broadly.
 
 ## Conventions
 
@@ -412,10 +415,11 @@ changes, re-read before acting on what you remembered.
 1. **The closest brain first.** If several brains are available (this
    project's, a team's, your personal one), the one closest to the
    implementation wins when they disagree.
-2. **`skills/`** — actionable, tested procedures. The purest layer.
-3. **`conventions/`** — decided rules and principles for how things get
-   done, standing across many tasks. Check these before planning new work:
-   a convention can rule out an approach outright.
+2. **`conventions/`** — standing rules for how things get done, across
+   many tasks. brainpick lists them first in `brain_overview` and the
+   AGENTS.md report for a reason: a convention can rule out an approach
+   outright, so read them before planning anything.
+3. **`skills/`** — actionable, tested procedures. The purest layer.
 4. **`knowledge/`** — evergreen concepts, for the idea behind a skill or a
    fact no skill covers yet.
 5. **`journals/`** — dated episodes, only when nothing distilled exists.
@@ -435,7 +439,7 @@ With brainpick: `brain_overview` first, then `brain_search`, then
   becomes a concept when it settles; a concept becomes a skill when it has
   been carried out and works. A decision that settles into a standing rule
   — applied broadly, not just this one time — becomes a `conventions/` page
-  instead, `type: decision`, alongside that flow rather than inside it.
+  instead, `type: convention`, alongside that flow rather than inside it.
 - **Journal in today's file.** Write into `journals/YYYY-MM-DD.md` (create
   it on the first entry of the day; headings inside are free — `## HH:MM`
   or a title, newest first). **Before the first entry of a new day, move
@@ -505,7 +509,7 @@ exclude = ["raw/*"]     # source material stays greppable but never surfaces in 
 mode = "section"        # brainpick owns a generated block at the end of index.md
 
 [brain]
-format = {format}              # the brainpick brain format (spec/85): day journals, todo/ in the brain
+format = {format}              # the brainpick brain format (spec/85): day journals, todo/ and conventions/ in the brain
 audience = "personal"   # personal | team | public — who this brain is written for
 # origin = ""           # canonical git URL, once this repo has one
 # readers = []          # for team: who reads it, by handle or role
@@ -521,6 +525,7 @@ default = {half_life}           # days; 0 = never fades
 journals = 180          # episodic memory fades first
 todo = 90               # an open list should be a fresh list
 skills = 0              # procedural memory never fades
+conventions = 0         # rules never fade
 """
 
 # Ships with the template: the brain's custom checks (henxels_checks.py). The

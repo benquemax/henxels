@@ -90,7 +90,7 @@ def test_brainpick_toml_declares_a_brain(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
     toml = _read(tmp_path, "brainpick.toml")
     assert "[bundle]" in toml and 'root = "_brain"' in toml
-    assert "[brain]" in toml and "format = 2" in toml
+    assert "[brain]" in toml and "format = 3" in toml
     assert "audience" in toml
     assert "\nid = " not in toml  # identity is minted by `brainpick init`, never by this template
 
@@ -104,6 +104,7 @@ def test_brainpick_toml_fades_slowly_by_default(tmp_path):
     assert "[half_life.folders]" in toml
     assert re.search(r"(?m)^journals = \d+", toml)
     assert re.search(r"(?m)^skills = 0", toml)  # procedural memory never fades
+    assert re.search(r"(?m)^conventions = 0", toml)  # rules never fade (brainpick format 3)
     assert "steepen" in toml.lower()  # the knob explains itself
 
 
@@ -198,20 +199,20 @@ def test_contract_covers_the_sixteen_rules(tmp_path):
         "no_secrets: true",                       # 13
         "brainpick.local.toml",                   # 13 local config never committed
         "min_outbound_links",                     # grounding
-        "type: [decision]",                       # conventions/ holds decided rules only
+        "type: [convention]",                     # conventions/ holds standing rules only (brainpick format 3)
     ):
         assert needle in text, f"contract lacks {needle!r}"
     assert "type: [playbook]" not in text
     assert "github.com/benquemax/brainpick" in text  # the backlink
 
 
-def test_conventions_holds_decision_type_docs_listed_in_its_index(tmp_path):
+def test_conventions_holds_convention_type_docs_listed_in_its_index(tmp_path):
     init(tmp_path, install_git_hooks=False, template=TEMPLATE)
     conventions = tmp_path / "_brain" / "conventions"
 
     # right type, but not referenced from index.md yet
     (conventions / "gloss-every-code.md").write_text(
-        f"---\ntype: decision\ntitle: Gloss every code\ndescription: Never a bare id.\n"
+        f"---\ntype: convention\ntitle: Gloss every code\ndescription: Never a bare id.\n"
         f"timestamp: {_today()}T00:00:00Z\n---\n\nSee [journal](../journals/index.md).\n",
         encoding="utf-8",
     )
@@ -222,9 +223,10 @@ def test_conventions_holds_decision_type_docs_listed_in_its_index(tmp_path):
     )
     assert _findings(tmp_path) == []  # referenced now, green again
 
-    # wrong type is rejected — conventions/ is decisions, not general concepts
+    # wrong type is rejected — conventions/ holds standing rules (brainpick format 3
+    # `type: convention`), not general concepts and not the decision records they came from
     (conventions / "wrong-type.md").write_text(
-        f"---\ntype: article\ntitle: Wrong type\ndescription: Should be decision.\n"
+        f"---\ntype: decision\ntitle: Wrong type\ndescription: Should be convention.\n"
         f"timestamp: {_today()}T00:00:00Z\n---\n\nSee [journal](../journals/index.md).\n",
         encoding="utf-8",
     )
