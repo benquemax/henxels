@@ -59,10 +59,19 @@ class Location:
 def parse(spec: str) -> Location:
     raw = spec
     s = str(spec).strip()
-    if s.startswith("./"):
-        s = s[2:]
-    elif s == ".":
-        s = ""
+    # Strip EVERY leading "./" and any bare "." segment, not just the first. A wiki
+    # whose root is the repo root substitutes "." into "./$wiki/..." and yields
+    # "././*" or "./."; stripping once left a literal folder named "." that no
+    # repo-relative path is ever under, so the henxel matched nothing and the
+    # contract was silently inert.
+    while True:
+        if s.startswith("./"):
+            s = s[2:]
+        elif s == ".":
+            s = ""
+        else:
+            break
+    s = "/".join(part for part in s.split("/") if part != ".") if "/" in s else s
 
     recursive = False
     if s.endswith("/**"):

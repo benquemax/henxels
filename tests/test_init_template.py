@@ -229,3 +229,31 @@ def test_cli_dry_run(tmp_path, monkeypatch, capsys):
     assert main(["init", "--template", "okf-llm-wiki", "--no-hooks", "--dry-run"]) == 0
     assert "dry run" in capsys.readouterr().out
     assert not (tmp_path / "henxels.yaml").exists()
+
+
+def test_wiki_at_the_repo_root_generates_scopes_that_actually_match(tmp_path):
+    """`--wiki-dir .` governs the repo root itself. The template substitutes the
+    wiki dir into `./$wiki/...`, so a bare "." used to yield `././*` and `./.` —
+    scopes naming a literal folder "." that no repo-relative path is ever under.
+    Every doc rule then matched nothing and the contract was SILENTLY INERT:
+    `check --all` reported "all henxels hold" while inspecting no document.
+
+    The regression guard is behavioural, not textual: a doc that violates the
+    contract must be reported."""
+    from henxels.locations import parse
+
+    init(tmp_path, install_git_hooks=False, template="okf-llm-wiki", wiki_dir=".")
+    text = (tmp_path / "henxels.yaml").read_text(encoding="utf-8")
+    assert "././" not in text and "in: ./.\n" not in text
+
+    # every generated scope resolves to something a repo-relative path can be under
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("in: ") and "[" not in stripped:
+            spec = stripped[4:].strip()
+            assert "/." not in parse(spec).base
+
+    bad = tmp_path / "Not_Kebab.md"
+    bad.write_text("---\ntype: article\n---\n\n# no title, no description\n", encoding="utf-8")
+    findings = _findings(tmp_path)
+    assert findings, "a violating doc must be reported — an inert contract reports nothing"

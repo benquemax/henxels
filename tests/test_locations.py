@@ -53,3 +53,40 @@ def test_base_for_existence_statements():
     assert parse("./docs/*").base == "docs"
     assert parse("./").base == ""
     assert parse("./*").base == ""
+
+
+# A wiki whose root IS the repo root: `okf-llm-wiki --wiki-dir .` substitutes
+# wiki="." into `./$wiki/...`, producing `././*` and `./.`. parse() stripped the
+# leading "./" exactly once, leaving a literal folder named "." that no
+# repo-relative path can ever be under — so every rule scoped that way matched
+# nothing and the contract was silently inert.
+
+
+def test_redundant_current_dir_segment_is_the_repo_root():
+    loc = parse("././*")
+    assert loc.kind == "folder" and loc.base == "" and loc.recursive
+    assert loc.matches("brainpick.md")
+    assert loc.matches("journals/2026-09-18.md")
+
+
+def test_dot_dot_slash_is_the_repo_root_level():
+    loc = parse("./.")
+    assert loc.kind == "folder" and loc.base == ""
+    assert loc.matches("index.md")
+    assert not loc.matches("journals/x.md")   # this level only
+
+
+def test_redundant_dot_in_a_glob():
+    loc = parse("././**/index.md")
+    assert loc.matches("index.md")
+    assert loc.matches("journals/index.md")
+
+
+def test_redundant_dot_before_a_named_folder():
+    loc = parse("././docs")
+    assert loc.base == "docs"
+    assert loc.matches("docs/x.md")
+
+
+def test_governs_follows_the_same_normalization():
+    assert parse("././*").governs("skills/a.md")

@@ -361,10 +361,27 @@ def _ambiguous_wiki_message(candidates: list[tuple[str, int]]) -> str:
     )
 
 
+def _tidy_root_scopes(fragment: str) -> str:
+    """Collapse the redundant "." a root-level wiki substitutes into ``./$wiki/...``.
+
+    ``--wiki-dir .`` governs the repo root itself, so the template's ``./$wiki/*``
+    becomes ``././*`` and ``./$wiki`` becomes ``./.``. `locations.parse` now reads
+    those correctly, but a generated contract should still say what it means — a
+    human editing it should not have to decode ``././**/log.md``."""
+    return (
+        fragment.replace("./././", "./")
+        .replace("././", "./")
+        .replace(": ./.\n", ": ./\n")
+        .replace(" ./.\n", " ./\n")
+    )
+
+
 def _okf_fragment(wiki: str, warn: bool) -> str:
     """The wiki henxels; in migrate mode every rule starts at ``level: warn`` so an
     existing wiki gets a migration plan, not blocked commits."""
     fragment = _OKF_WIKI.substitute(wiki=wiki)
+    if wiki in ("", "."):
+        fragment = _tidy_root_scopes(fragment)
     if not warn:
         return fragment
     out = []
