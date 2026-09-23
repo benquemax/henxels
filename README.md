@@ -221,6 +221,29 @@ can make it enforced — and the agent installs the guard itself:
 henxels integrate opencode
 ```
 
+### Write the rule as a sentence and let a model judge it
+
+Some rules no glob can express. `make_sure_that` shows the staged diff in scope to any
+OpenAI-compatible model — a local Ollama, or a hosted one — and asks whether the henxel's
+own sentence holds. It answers with a reason (the instruction) and, where the endpoint
+gives logprobs, a confidence: an unsure or unreachable judge only *warns*, so a flaky model
+can never lock a commit.
+
+```yaml
+settings:
+  judge: {base_url: http://localhost:11434/v1, model: qwen3:8b}
+
+henxels:
+  - henxel: "Behaviour changes are described in the docs, not just touched"
+    in: [./src/*, ./docs/*]
+    make_sure_that: true
+    level: warn
+```
+
+`@path` in a sentence hands the judge a file — *"None of the words in @banned-words.md are
+used"*. Diff-only, cached, no tokens spent when the scope wasn't touched. Guide:
+[Natural-language henxels](https://github.com/benquemax/henxels/blob/main/docs/natural-language-henxels.md).
+
 ### Budget files in tokens, not just lines
 
 A file too big for the agent's context window is one it can't reason over — so warn in the
@@ -241,8 +264,9 @@ The README is the tour; the deeper guides live in
 - [Getting started](https://github.com/benquemax/henxels/blob/main/docs/getting-started.md) — install, init, validate.
 - [Writing henxels](https://github.com/benquemax/henxels/blob/main/docs/writing-henxels.md) — the contract: `in:`, `except:`, `level:`, `why:`.
 - [Built-in statements](https://github.com/benquemax/henxels/blob/main/docs/built-in-statements.md) — the standard library.
+- [Natural-language henxels](https://github.com/benquemax/henxels/blob/main/docs/natural-language-henxels.md) — rules as sentences, judged by a language model (`make_sure_that`).
 - [Custom checks](https://github.com/benquemax/henxels/blob/main/docs/custom-checks.md) — write your own statements.
-- [Settings](https://github.com/benquemax/henxels/blob/main/docs/settings.md) — behaviours (staging, push, delete, similarity, large files).
+- [Settings](https://github.com/benquemax/henxels/blob/main/docs/settings.md) — behaviours (staging, push, delete, similarity, large files, the judge).
 - [Guards and bless](https://github.com/benquemax/henxels/blob/main/docs/guards-and-bless.md) — how the protections work.
 - [Agent integrations](https://github.com/benquemax/henxels/blob/main/docs/agent-integrations.md) — the AGENTS.md digest and harness hooks.
 - [Enforcing OKF](https://github.com/benquemax/henxels/blob/main/docs/enforcing-okf.md) — a worked contract for the Open Knowledge Format.

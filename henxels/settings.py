@@ -75,3 +75,10 @@ def large_files(contract: Contract) -> dict | None:
     if isinstance(raw, dict):
         return {"over": str(raw.get("over", DEFAULT_LARGE_FILE)), "ignore": raw.get("ignore", []) or []}
     return None
+
+
+def judge(contract: Contract):
+    """The natural-language judge config (JudgeConfig) when ``judge:`` is set, else None."""
+    from henxels.judge import config_from_settings
+
+    return config_from_settings(contract.settings)

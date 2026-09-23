@@ -10,6 +10,10 @@ settings:
   warn_about_similar_files:
     above: 0.85
     ignore: ["**/__init__.py", "tests/**", "integrations/**"]
+  judge:                          # who judges the natural-language henxels (make_sure_that)
+    base_url: http://localhost:11434/v1   # a local Ollama; override per machine if needed
+    model: qwen3:8b
+    api_key_env: HENXELS_JUDGE_KEY        # unset = no key sent (local endpoints need none)
 
 henxels:
   - henxel: "The package code is snake_case (including subpackages)"
@@ -67,3 +71,12 @@ henxels:
       when: henxels/**             # if package code is staged...
       expect: [docs/**, README.md, AGENTS.md]   # ...so should the docs
     level: warn
+
+  - henxel: "A changed behaviour is described in the docs, not merely touched"
+    why: >
+      changed_with only sees that a doc file moved; only a reader can tell whether
+      it now says the new thing. This one asks a model. A doc that lies is worse
+      than no doc.
+    in: [./henxels/*, ./docs/*, ./README.md]
+    make_sure_that: true           # the judge in settings: reads the staged diff
+    level: warn                    # a judge is fallible; awareness beats blocking

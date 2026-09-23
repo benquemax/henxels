@@ -39,3 +39,10 @@ def test_similarity_budget_forms():
     assert got["budget"] == 300.0
     got = settings.similarity(Contract(settings={"warn_about_similar_files": {"budget": "1h"}}))
     assert got["budget"] == 3600.0
+
+
+def test_judge_forms(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert settings.judge(Contract()) is None
+    cfg = settings.judge(Contract(settings={"judge": {"base_url": "http://h:1/v1", "model": "m"}}))
+    assert cfg.base_url == "http://h:1/v1" and cfg.model == "m" and cfg.api_key is None

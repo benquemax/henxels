@@ -60,7 +60,7 @@ class Sandbox:
         env = {**self.env, **(env_extra or {})}
         return subprocess.run(
             argv, cwd=str(cwd), env=env, capture_output=True, text=True,
-            input=stdin_text, timeout=120,
+            input=stdin_text, timeout=float(os.environ.get("HENXELS_E2E_TIMEOUT", "120")),
         )
 
     def henxels(self, *args: str, cwd: Path, env_extra: dict | None = None,

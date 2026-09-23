@@ -10,6 +10,7 @@ Importing this package registers every built-in (each category module runs its
     size        line and file budgets      (max_lines, max_files)
     security    things that must not ship  (no_secrets)
     history     rules about change         (append_only, immutable, bump_updated_on_change)
+    judgement   natural-language rules     (make_sure_that — a language model judges the diff)
     meta        the statement library      (well_formed_statements)
     commands    git-stage command gates    (run_before_commit, run_before_push)
 """
@@ -18,6 +19,7 @@ from henxels.statements.builtins import (  # noqa: F401  (imported for registrat
     commands,
     content,
     history,
+    judgement,
     links,
     meta,
     naming,

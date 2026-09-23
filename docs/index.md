@@ -1,6 +1,6 @@
 ---
 title: henxels documentation
-summary: Map of the henxels guides — the contract, built-in and custom checks, settings, guards, agent integrations, and upgrading.
+summary: Map of the henxels guides — the contract, built-in, natural-language and custom checks, settings, guards, agent integrations, and upgrading.
 ---
 
 # henxels documentation
@@ -15,9 +15,12 @@ keep agents and humans true to your repo's structure. These guides go deeper tha
 - [Writing henxels](writing-henxels.md) — the contract: a henxel, `in:`, `except:`,
   `level:`, and `why:`.
 - [Built-in statements](built-in-statements.md) — the standard library, by category.
+- [Natural-language henxels](natural-language-henxels.md) — rules written as sentences and
+  judged by a language model (`make_sure_that` + the `judge` setting).
 - [Custom checks](custom-checks.md) — write your own statements: where they live, how
   they're named, and the injection API.
-- [Settings](settings.md) — behaviours: staging, push, delete, similarity, large files.
+- [Settings](settings.md) — behaviours: staging, push, delete, similarity, large files,
+  the judge.
 - [Guards and bless](guards-and-bless.md) — how the push and delete protections work.
 - [Agent integrations](agent-integrations.md) — the `AGENTS.md` digest and harness hooks.
 - [Enforcing OKF](enforcing-okf.md) — a worked contract for the Open Knowledge Format:

@@ -14,6 +14,14 @@ CONTRACT = Contract(
 )
 
 
+def test_render_digest_mentions_the_judge():
+    from henxels.contract import Contract
+
+    d = render_digest(Contract(settings={"judge": {"base_url": "http://h:1/v1", "model": "m"}}))
+    assert "make_sure_that" in d and "http://h:1/v1" in d
+    assert "judge" not in render_digest(Contract(settings={}))
+
+
 def test_render_digest():
     d = render_digest(CONTRACT)
     assert "Docs are kebab-case markdown (in ./docs)" in d

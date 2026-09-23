@@ -1,6 +1,6 @@
 ---
 title: Built-in statements
-summary: The standard library of statements that ship with henxels, grouped by what they verify — naming, structure, content, links, size, secrets, and change.
+summary: The standard library of statements that ship with henxels, grouped by what they verify — naming, structure, content, links, size, secrets, change, and natural-language judgement.
 ---
 
 # Built-in statements
@@ -116,6 +116,23 @@ unrelated commit. Pair both with `level: warn`.
 
 Rule of thumb: reach for `must_be_in_sync` when the files are *peers* that always move
 together, and `changed_with` when one *follows* the other.
+
+## Natural language
+
+- **`make_sure_that`** — a rule that's a plain sentence, judged by a language model against
+  the staged changes in scope. `true` judges the henxel's own sentence (and `why:`); a
+  string or list judges those sentences instead. `@path` in a sentence hands that file
+  to the judge ("None of the words in @banned-words.md are used"). Diff-only, cached,
+  and it only *warns* when the judge is unsure or unreachable. Needs `settings.judge` (any OpenAI-compatible
+  endpoint). See [Natural-language henxels](natural-language-henxels.md).
+
+```yaml
+  - henxel: "Behaviour changes are described in the docs"
+    in: [./src/*, ./docs/*]
+    why: A doc that lies is worse than no doc.
+    make_sure_that: true
+    level: warn
+```
 
 ## Commands and meta
 

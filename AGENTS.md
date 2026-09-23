@@ -120,6 +120,8 @@ Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks 
 - The contract holds before every push
 - The end-to-end journeys pass before every push
 - Behaviour changes update the docs _(warn)_
+- A changed behaviour is described in the docs, not merely touched (in ./henxels/*, ./docs/*, ./README.md) _(warn)_
+  ↳ changed_with only sees that a doc file moved; only a reader can tell whether it now says the new thing. This one asks a model. A doc that lies is worse than no doc.
 
 ### Behaviours
 
@@ -127,6 +129,7 @@ Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks 
 - push is blocked until `henxels bless push`
 - deleting files / removing many lines is blocked until `henxels bless delete`
 - warns when a new file looks like a near-copy of a committed one
+- natural-language henxels (`make_sure_that`) are judged by a language model at `http://localhost:11434/v1` — the staged diff in scope is sent there; a rule the judge can't verify only warns
 
 ### Custom henxels & contributing
 

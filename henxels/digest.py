@@ -85,6 +85,13 @@ def _render_settings(contract: Contract) -> list[str]:
         out.append("- deleting files / removing many lines is blocked until `henxels bless delete`")
     if s.get("warn_about_similar_files"):
         out.append("- warns when a new file looks like a near-copy of a committed one")
+    if s.get("judge"):
+        j = s["judge"] if isinstance(s["judge"], dict) else {}
+        where = j.get("base_url", "a local model")
+        out.append(
+            f"- natural-language henxels (`make_sure_that`) are judged by a language model at "
+            f"`{where}` — the staged diff in scope is sent there; a rule the judge can't verify only warns"
+        )
     return out
 
 

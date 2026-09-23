@@ -1,6 +1,6 @@
 ---
 title: Settings
-summary: The settings block holds behaviours — staging, push, and delete protections plus similarity and large-file warnings — the parts of the contract that aren't tests.
+summary: The settings block holds behaviours — staging, push, and delete protections plus similarity and large-file warnings and the judge for natural-language rules — the parts of the contract that aren't tests.
 ---
 
 # Settings
@@ -76,6 +76,27 @@ Warns when a file exceeds a size threshold. `over` is unit-aware: `8000 tokens`,
 is required). Tokens — the unit an agent's context window is measured in — are a
 dependency-free estimate (`chars / 4`) and are always labelled `(estimated)`. `ignore`
 skips globs. It warns, never blocks.
+
+## judge
+
+The language model that judges [natural-language henxels](natural-language-henxels.md)
+(`make_sure_that`). Any OpenAI-compatible chat endpoint — local (Ollama, llama.cpp, vLLM,
+LM Studio) or hosted — with or without a key:
+
+```yaml
+settings:
+  judge:
+    base_url: http://localhost:11434/v1   # default: Ollama
+    model: qwen3:8b
+    api_key_env: OPENAI_API_KEY           # the env var, never the key itself
+    timeout: 60
+    extra_body: {chat_template_kwargs: {enable_thinking: false}}   # optional passthrough
+    block_above: 0.8                      # block only when the judge is at least this sure
+```
+
+`judge: true` takes the defaults. Without a `judge:` block, a `make_sure_that` henxel only
+warns that no judge is configured. The full key table and the confidence rules are in the
+guide.
 
 ## Where settings are read
 

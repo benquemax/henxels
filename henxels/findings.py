@@ -14,6 +14,17 @@ BLOCK = "block"  # stops the action; override by editing the contract (or bless)
 WARN = "warn"  # advisory; surfaced loudly but never blocks
 
 
+class Advisory(str):
+    """An instruction that should only ever *warn*, whatever the henxel's level.
+
+    Statements return it for verdicts they can't stand behind at block strength — a
+    judge that isn't confident, a judge that couldn't be reached. A henxel whose
+    instructions are all advisory is reported at WARN even if declared ``block``.
+    """
+
+    __slots__ = ()
+
+
 @dataclass
 class Finding:
     """One henxel verdict."""

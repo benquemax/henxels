@@ -12,7 +12,7 @@ from pathlib import Path
 
 from henxels.contract import Contract
 from henxels.engine.discover import discover
-from henxels.findings import BLOCK, Finding
+from henxels.findings import BLOCK, WARN, Advisory, Finding
 from henxels.statements.registry import StatementDef, get_statement
 from henxels.statements.scope import Scope, build_scope
 from henxels.version_check import requirement_unmet
@@ -55,12 +55,15 @@ def run_contract(
                 continue
             if sdef.stage is not None:
                 continue  # command gate; runs in the hooks
-            instructions.extend(_invoke(sdef, param, scope, hx.text, diff))
+            instructions.extend(_invoke(sdef, param, scope, hx.text, diff, henxel=hx))
 
         if instructions:
+            # A henxel whose every instruction is advisory (an unsure or unreachable
+            # judge) can't block: demote to warn so a shaky verdict never locks a commit.
+            level = WARN if all(isinstance(i, Advisory) for i in instructions) else hx.level
             findings.append(
                 Finding(
-                    level=hx.level,
+                    level=level,
                     henxel=hx.text,
                     path="",
                     message="",
@@ -71,8 +74,11 @@ def run_contract(
     return findings
 
 
-def _invoke(sdef: StatementDef, param, scope: Scope, sentence: str, diff=None) -> list[str]:
-    avail = {"param": param, "scope": scope, "root": scope.root, "settings": scope.settings, "diff": diff}
+def _invoke(sdef: StatementDef, param, scope: Scope, sentence: str, diff=None, henxel=None) -> list[str]:
+    avail = {
+        "param": param, "scope": scope, "root": scope.root, "settings": scope.settings,
+        "diff": diff, "henxel": henxel,
+    }
 
     def call(extra=None):
         args = {**avail, **(extra or {})}
@@ -101,7 +107,7 @@ def _normalize(result, file: str | None, sentence: str) -> list[str]:
     if result is False:
         return [f"{file} — {sentence}" if file else sentence]
     if isinstance(result, str):
-        return [_with_file(result, file)]
+        return [_with_file(result, file)]  # keeps an Advisory an Advisory
     if isinstance(result, (list, tuple)):
         out: list[str] = []
         for item in result:
@@ -112,7 +118,8 @@ def _normalize(result, file: str | None, sentence: str) -> list[str]:
 
 def _with_file(message: str, file: str | None) -> str:
     if file and file not in message:
-        return f"{file} — {message}"
+        text = f"{file} — {message}"
+        return Advisory(text) if isinstance(message, Advisory) else text
     return message
 
 

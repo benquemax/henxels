@@ -73,6 +73,8 @@ Arguments are injected **by name** — declare only the ones you need, in any or
 - **`diff`** — the staged diff at commit time (else `None`). Use it for rules about
   *change*: `diff.modified`, `diff.added`, `diff.deleted`, `diff.old_text(f)`,
   `diff.new_text(f)`. See `append_only` / `bump_updated_on_change` for examples.
+- **`henxel`** — the henxel being run: `.text` (its sentence), `.why`, `.level`. For
+  statements that reason about the rule itself (`make_sure_that` judges `.text`).
 
 ## What to return
 

@@ -13,6 +13,8 @@ Inject any of these by naming them as parameters (take only what you need):
     settings   the contract's settings dict
     diff       the staged diff (StagedDiff) at commit time, else None — for rules about
                *change*: diff.modified/added/deleted, diff.old_text()/new_text()
+    henxel     the Henxel being run (its .text sentence, .why, .level) — for statements
+               that reason about the rule itself, like make_sure_that
 
 Return convention (any of these):
 
@@ -40,7 +42,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 STAGES = ("pre_commit", "pre_push")
-INJECTABLE = ("param", "scope", "file", "root", "settings", "diff")
+INJECTABLE = ("param", "scope", "file", "root", "settings", "diff", "henxel")
 
 # Behaviours that live under `settings:`, not as henxel statements. A custom check that
 # uses one of these names is almost always a reinvented built-in (the #1 small-model
@@ -51,6 +53,7 @@ SETTINGS_NAMES = (
     "confirm_before_deleting",
     "warn_about_similar_files",
     "warn_about_large_files",
+    "judge",
 )
 
 
