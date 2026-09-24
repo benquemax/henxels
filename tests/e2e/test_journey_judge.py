@@ -196,7 +196,10 @@ def test_unreachable_judge_fails_open(sandbox):
     assert "could not be judged" in out
 
 
-LIVE_URL = os.environ.get("HENXELS_JUDGE_URL")
+# Snapshotted at import: the autouse fixture in conftest strips HENXELS_JUDGE_* from
+# os.environ so unit tests never see a developer's own judge; the live journey wants it.
+LIVE_ENV = {k: v for k, v in os.environ.items() if k.startswith("HENXELS_JUDGE_")}
+LIVE_URL = LIVE_ENV.get("HENXELS_JUDGE_URL")
 
 
 @pytest.mark.skipif(not LIVE_URL, reason="set HENXELS_JUDGE_URL (and HENXELS_JUDGE_MODEL) to run against a real judge")
@@ -209,7 +212,7 @@ def test_live_judge_catches_an_undocumented_flag(sandbox):
     assert seeded.returncode == 0, output_of(seeded)
     # The contract only says there IS a judge; WHERE it lives rides in on HENXELS_JUDGE_*,
     # exactly as it would on a developer's machine. Nothing LAN-specific is written to disk.
-    sandbox.env.update({k: v for k, v in os.environ.items() if k.startswith("HENXELS_JUDGE_")})
+    sandbox.env.update(LIVE_ENV)
     sandbox.write(repo, "henxels.yaml", """settings:
   judge: {api_key_env: HENXELS_JUDGE_KEY, timeout: 600}
 henxels:
