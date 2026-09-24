@@ -202,20 +202,16 @@ LIVE_URL = os.environ.get("HENXELS_JUDGE_URL")
 @pytest.mark.skipif(not LIVE_URL, reason="set HENXELS_JUDGE_URL (and HENXELS_JUDGE_MODEL) to run against a real judge")
 def test_live_judge_catches_an_undocumented_flag(sandbox):
     """A real model, a real diff: the flag is added, the README isn't — it must notice."""
-    model = os.environ.get("HENXELS_JUDGE_MODEL", "qwen3:8b")
-    extra = os.environ.get("HENXELS_JUDGE_EXTRA_BODY", "{}")
     repo = sandbox.repo()
     sandbox.write(repo, "README.md", "# tool\n\nFlags:\n\n- `--verbose`: talk more\n")
     sandbox.write(repo, "cli.py", "def main(args):\n    if '--verbose' in args:\n        print('v')\n")
     seeded = sandbox.commit_all(repo, "seed")  # before the contract: the seed isn't judged
     assert seeded.returncode == 0, output_of(seeded)
-    sandbox.write(repo, "henxels.yaml", f"""settings:
-  judge:
-    base_url: {LIVE_URL}
-    model: {model}
-    api_key_env: HENXELS_JUDGE_KEY
-    timeout: 300
-    extra_body: {extra}
+    # The contract only says there IS a judge; WHERE it lives rides in on HENXELS_JUDGE_*,
+    # exactly as it would on a developer's machine. Nothing LAN-specific is written to disk.
+    sandbox.env.update({k: v for k, v in os.environ.items() if k.startswith("HENXELS_JUDGE_")})
+    sandbox.write(repo, "henxels.yaml", """settings:
+  judge: {api_key_env: HENXELS_JUDGE_KEY, timeout: 600}
 henxels:
   - henxel: "New CLI flags are documented in README.md"
     in: [./cli.py, ./README.md]
@@ -223,8 +219,6 @@ henxels:
     make_sure_that: true
 """)
     sandbox.henxels("init", cwd=repo)
-    if os.environ.get("HENXELS_JUDGE_KEY"):
-        sandbox.env["HENXELS_JUDGE_KEY"] = os.environ["HENXELS_JUDGE_KEY"]
     contracted = sandbox.commit_all(repo, "contract")  # scope untouched → not judged
     assert contracted.returncode == 0, output_of(contracted)
 

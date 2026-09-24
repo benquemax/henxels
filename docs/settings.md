@@ -95,8 +95,25 @@ settings:
 ```
 
 `judge: true` takes the defaults. Without a `judge:` block, a `make_sure_that` henxel only
-warns that no judge is configured. The full key table and the confidence rules are in the
-guide.
+warns that no judge is configured.
+
+**Keep the endpoint out of the contract.** `henxels.yaml` is committed and should be true
+for everyone who clones it; a hostname on your LAN is not a rule of the project. The
+contract says *that* there is a judge; the machine says *where*, through the environment:
+
+| Variable                   | Overrides    |
+|----------------------------|--------------|
+| `HENXELS_JUDGE_URL`        | `base_url`   |
+| `HENXELS_JUDGE_MODEL`      | `model`      |
+| `HENXELS_JUDGE_TIMEOUT`    | `timeout`    |
+| `HENXELS_JUDGE_EXTRA_BODY` | `extra_body` (JSON, merged over the contract's) |
+
+So the committed contract can be just `judge: true` (or `judge: {api_key_env: MY_KEY}`),
+and your shell profile carries `HENXELS_JUDGE_URL=http://my-box:4800/v1`. A clone without
+those variables falls back to the contract's values, then the defaults — and if nothing
+answers there, it warns "could not be judged" and moves on. The environment never switches
+judging *on*: without a `judge:` key in the contract the variables are ignored. The full
+key table and the confidence rules are in the guide.
 
 ## Where settings are read
 

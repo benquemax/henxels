@@ -86,11 +86,12 @@ def _render_settings(contract: Contract) -> list[str]:
     if s.get("warn_about_similar_files"):
         out.append("- warns when a new file looks like a near-copy of a committed one")
     if s.get("judge"):
-        j = s["judge"] if isinstance(s["judge"], dict) else {}
-        where = j.get("base_url", "a local model")
+        # No hostname here: where the judge lives is per machine (HENXELS_JUDGE_URL), and the
+        # digest is committed. Say what happens, not where.
         out.append(
-            f"- natural-language henxels (`make_sure_that`) are judged by a language model at "
-            f"`{where}` — the staged diff in scope is sent there; a rule the judge can't verify only warns"
+            "- natural-language henxels (`make_sure_that`) are judged by a language model — the staged "
+            "diff in scope is sent to the configured endpoint (`settings.judge`, overridable by "
+            "`HENXELS_JUDGE_URL`); a rule the judge can't verify only warns"
         )
     return out
 

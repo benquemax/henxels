@@ -8,6 +8,14 @@ import pytest
 GIT = shutil.which("git")
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_judge(monkeypatch):
+    """A developer's shell carries HENXELS_JUDGE_* (that's the point of them); the unit
+    tests must see only what they set themselves."""
+    for name in ("HENXELS_JUDGE_URL", "HENXELS_JUDGE_MODEL", "HENXELS_JUDGE_TIMEOUT", "HENXELS_JUDGE_EXTRA_BODY"):
+        monkeypatch.delenv(name, raising=False)
+
+
 def _git(root, *args):
     subprocess.run([GIT, *args], cwd=root, check=True, capture_output=True, text=True)
 

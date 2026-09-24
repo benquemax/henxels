@@ -70,21 +70,40 @@ class Verdict:
     error: str | None = None
 
 
+# Where the judge lives is a fact about a machine, not a rule of the project, so these
+# override the committed contract. The contract only decides *that* there is a judge.
+ENV_URL = "HENXELS_JUDGE_URL"
+ENV_MODEL = "HENXELS_JUDGE_MODEL"
+ENV_TIMEOUT = "HENXELS_JUDGE_TIMEOUT"
+ENV_EXTRA_BODY = "HENXELS_JUDGE_EXTRA_BODY"  # JSON, merged over the contract's extra_body
+
+
 def config_from_settings(settings: dict) -> JudgeConfig | None:
-    """Read ``settings.judge`` (``true`` for defaults, or a mapping). None = judging is off."""
+    """Read ``settings.judge`` (``true`` for defaults, or a mapping). None = judging is off.
+
+    ``HENXELS_JUDGE_URL`` / ``_MODEL`` / ``_TIMEOUT`` / ``_EXTRA_BODY`` in the environment
+    win over the contract, so a LAN endpoint never needs to be committed.
+    """
     raw = (settings or {}).get("judge")
     if not raw:
         return None
     raw = raw if isinstance(raw, dict) else {}
     key_env = str(raw.get("api_key_env", DEFAULT_API_KEY_ENV))
     key = os.environ.get(key_env) or None
+    env = os.environ
+    extra_body = dict(raw.get("extra_body") or {})
+    if env.get(ENV_EXTRA_BODY):
+        try:
+            extra_body.update(json.loads(env[ENV_EXTRA_BODY]))
+        except (ValueError, TypeError, AttributeError):
+            pass  # a typo in the shell profile must not break every commit
     return JudgeConfig(
-        base_url=str(raw.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
-        model=str(raw.get("model", DEFAULT_MODEL)),
+        base_url=str(env.get(ENV_URL) or raw.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
+        model=str(env.get(ENV_MODEL) or raw.get("model", DEFAULT_MODEL)),
         api_key=key,
-        timeout=float(raw.get("timeout", DEFAULT_TIMEOUT)),
+        timeout=float(env.get(ENV_TIMEOUT) or raw.get("timeout", DEFAULT_TIMEOUT)),
         max_chars=int(raw.get("max_chars", DEFAULT_MAX_CHARS)),
-        extra_body=dict(raw.get("extra_body") or {}),
+        extra_body=extra_body,
         block_above=float(raw.get("block_above", DEFAULT_BLOCK_ABOVE)),
         warn_above=float(raw.get("warn_above", DEFAULT_WARN_ABOVE)),
     )

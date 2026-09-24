@@ -17,8 +17,9 @@ CONTRACT = Contract(
 def test_render_digest_mentions_the_judge():
     from henxels.contract import Contract
 
-    d = render_digest(Contract(settings={"judge": {"base_url": "http://h:1/v1", "model": "m"}}))
-    assert "make_sure_that" in d and "http://h:1/v1" in d
+    d = render_digest(Contract(settings={"judge": {"base_url": "http://lan-box:1/v1", "model": "m"}}))
+    assert "make_sure_that" in d and "HENXELS_JUDGE_URL" in d
+    assert "lan-box" not in d  # the digest is committed; a LAN hostname is not a rule
     assert "judge" not in render_digest(Contract(settings={}))
 
 

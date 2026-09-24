@@ -91,6 +91,11 @@ Henxels sends one `POST {base_url}/chat/completions` with the standard library o
 
 `judge: true` takes every default (a local Ollama).
 
+Every "where" key has an environment override — `HENXELS_JUDGE_URL`, `_MODEL`, `_TIMEOUT`,
+`_EXTRA_BODY` (JSON) — that wins over the contract, so a LAN hostname or a model id never
+has to be committed; see [settings](settings.md#judge). The contract decides *that* there
+is a judge, the machine decides *where*.
+
 > **Your diff leaves the machine** if `base_url` points at a remote service. A staged diff
 > can contain secrets and unreleased work. Prefer a local endpoint; if you use a hosted
 > one, that's a conscious decision the committed `henxels.yaml` makes visible.

@@ -129,7 +129,7 @@ Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks 
 - push is blocked until `henxels bless push`
 - deleting files / removing many lines is blocked until `henxels bless delete`
 - warns when a new file looks like a near-copy of a committed one
-- natural-language henxels (`make_sure_that`) are judged by a language model at `http://localhost:11434/v1` — the staged diff in scope is sent there; a rule the judge can't verify only warns
+- natural-language henxels (`make_sure_that`) are judged by a language model — the staged diff in scope is sent to the configured endpoint (`settings.judge`, overridable by `HENXELS_JUDGE_URL`); a rule the judge can't verify only warns
 
 ### Custom henxels & contributing
 

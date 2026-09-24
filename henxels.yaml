@@ -10,10 +10,11 @@ settings:
   warn_about_similar_files:
     above: 0.85
     ignore: ["**/__init__.py", "tests/**", "integrations/**"]
-  judge:                          # who judges the natural-language henxels (make_sure_that)
-    base_url: http://localhost:11434/v1   # a local Ollama; override per machine if needed
-    model: qwen3:8b
-    api_key_env: HENXELS_JUDGE_KEY        # unset = no key sent (local endpoints need none)
+  judge:                          # there IS a judge for the natural-language henxels…
+    api_key_env: HENXELS_JUDGE_KEY        # …but WHERE it lives is the machine's business:
+    timeout: 300                          # HENXELS_JUDGE_URL / _MODEL / _EXTRA_BODY in your shell
+                                          # override the defaults (a local Ollama). No endpoint
+                                          # reachable? It warns "could not be judged" and moves on.
 
 henxels:
   - henxel: "The package code is snake_case (including subpackages)"

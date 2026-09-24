@@ -41,6 +41,36 @@ def test_config_reads_settings_and_key_from_env(monkeypatch):
     assert cfg.max_chars > 0
 
 
+def test_env_overrides_where_the_judge_lives(monkeypatch):
+    """The contract says *that* there is a judge; the machine says *where*. Hostnames
+    and model ids are infrastructure, not rules — they don't belong in a committed file."""
+    monkeypatch.setenv("HENXELS_JUDGE_URL", "http://lan-box:4800/v1/")
+    monkeypatch.setenv("HENXELS_JUDGE_MODEL", "big-model")
+    monkeypatch.setenv("HENXELS_JUDGE_EXTRA_BODY", '{"enable_thinking": false}')
+    monkeypatch.setenv("HENXELS_JUDGE_TIMEOUT", "300")
+    cfg = config_from_settings({"judge": {"base_url": "http://committed:1/v1", "model": "small", "timeout": 5}})
+    assert cfg.base_url == "http://lan-box:4800/v1"
+    assert cfg.model == "big-model"
+    assert cfg.extra_body == {"enable_thinking": False}
+    assert cfg.timeout == 300.0
+
+
+def test_env_extra_body_merges_over_the_contracts(monkeypatch):
+    monkeypatch.setenv("HENXELS_JUDGE_EXTRA_BODY", '{"b": 2}')
+    cfg = config_from_settings({"judge": {"extra_body": {"a": 1, "b": 1}}})
+    assert cfg.extra_body == {"a": 1, "b": 2}
+
+
+def test_env_does_not_switch_judging_on(monkeypatch):
+    monkeypatch.setenv("HENXELS_JUDGE_URL", "http://lan-box:4800/v1")
+    assert config_from_settings({}) is None  # no judge: in the contract → no judge
+
+
+def test_bad_env_extra_body_is_ignored_not_fatal(monkeypatch):
+    monkeypatch.setenv("HENXELS_JUDGE_EXTRA_BODY", "{not json")
+    assert config_from_settings({"judge": True}).extra_body == {}
+
+
 def test_config_true_means_defaults(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     cfg = config_from_settings({"judge": True})

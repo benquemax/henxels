@@ -231,7 +231,7 @@ can never lock a commit.
 
 ```yaml
 settings:
-  judge: {base_url: http://localhost:11434/v1, model: qwen3:8b}
+  judge: true   # where it lives is the machine's business: HENXELS_JUDGE_URL / _MODEL
 
 henxels:
   - henxel: "Behaviour changes are described in the docs, not just touched"
