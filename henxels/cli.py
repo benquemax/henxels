@@ -179,7 +179,7 @@ def cmd_check(args) -> int:
 
     staged_mode = False
     if args.paths:
-        files = [_rel(p, root) for p in args.paths]
+        files = _expand_paths(args.paths, root)
     elif args.staged:
         files, staged_mode = gitinfo.staged_files(root), True
     elif args.all:
@@ -577,6 +577,22 @@ def cmd_prepush(args) -> int:
     code, findings = run_prepush(Path.cwd())
     _emit(findings)
     return code
+
+
+def _expand_paths(paths: list[str], root: Path) -> list[str]:
+    """Path arguments as repo-relative files: a directory stands for every governed
+    file under it (via discover, so excludes apply), never for itself as a file."""
+    files: list[str] = []
+    governed = None
+    for p in paths:
+        if Path(p).is_dir():
+            if governed is None:
+                governed = discover(root)
+            prefix = _rel(p, root).rstrip("/")
+            files.extend(f for f in governed if prefix in ("", ".") or f == prefix or f.startswith(prefix + "/"))
+        else:
+            files.append(_rel(p, root))
+    return files
 
 
 def _rel(p: str, root: Path) -> str:

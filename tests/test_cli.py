@@ -94,3 +94,15 @@ def test_version_flag(capsys):
         main(["--version"])
     assert exc.value.code == 0
     assert __version__ in capsys.readouterr().out
+
+
+def test_check_expands_a_directory_argument(project, capsys):
+    # `henxels check docs` governs the files under docs/, not the directory entry
+    # itself — which used to be judged as a file ("docs — should be .md").
+    (project / "docs" / "intro.md").write_text("---\ntitle: t\n---\n# h\n", encoding="utf-8")
+    assert main(["check", "docs", "--plain"]) == 0
+    assert "all henxels hold" in capsys.readouterr().out
+    (project / "docs" / "Bad_Name.md").write_text("# no frontmatter\n", encoding="utf-8")
+    assert main(["check", "docs/", "--plain"]) == 1
+    out = capsys.readouterr().out
+    assert "Bad_Name" in out and "docs — " not in out
