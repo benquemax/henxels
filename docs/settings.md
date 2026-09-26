@@ -92,6 +92,10 @@ settings:
     timeout: 60
     extra_body: {chat_template_kwargs: {enable_thinking: false}}   # optional passthrough
     block_above: 0.8                      # block only when the judge is at least this sure
+    fallbacks:                            # tried in order when the primary fails
+      - base_url: https://api.openai.com/v1
+        model: gpt-4o-mini
+        api_key_env: OPENAI_API_KEY
 ```
 
 `judge: true` takes the defaults. Without a `judge:` block, a `make_sure_that` henxel only
@@ -101,19 +105,27 @@ warns that no judge is configured.
 for everyone who clones it; a hostname on your LAN is not a rule of the project. The
 contract says *that* there is a judge; the machine says *where*, through the environment:
 
-| Variable                   | Overrides    |
-|----------------------------|--------------|
-| `HENXELS_JUDGE_URL`        | `base_url`   |
-| `HENXELS_JUDGE_MODEL`      | `model`      |
-| `HENXELS_JUDGE_TIMEOUT`    | `timeout`    |
-| `HENXELS_JUDGE_EXTRA_BODY` | `extra_body` (JSON, merged over the contract's) |
+| Variable                    | Overrides    |
+|-----------------------------|--------------|
+| `HENXELS_JUDGE_URL`         | `base_url`   |
+| `HENXELS_JUDGE_MODEL`       | `model`      |
+| `HENXELS_JUDGE_TIMEOUT`     | `timeout`    |
+| `HENXELS_JUDGE_EXTRA_BODY`  | `extra_body` (JSON, merged over the contract's) |
+| `HENXELS_JUDGE_FALLBACKS`   | `fallbacks` (JSON array, appended to the contract's list) |
 
 So the committed contract can be just `judge: true` (or `judge: {api_key_env: MY_KEY}`),
 and your shell profile carries `HENXELS_JUDGE_URL=http://my-box:4800/v1`. A clone without
 those variables falls back to the contract's values, then the defaults — and if nothing
 answers there, it warns "could not be judged" and moves on. The environment never switches
 judging *on*: without a `judge:` key in the contract the variables are ignored. The full
-key table and the confidence rules are in the guide.
+key table and the confidence rules are in the [guide](natural-language-henxels.md).
+
+**Fallback judges.** When the primary endpoint fails (transport error, HTTP error, bad
+response), each entry in `fallbacks:` is tried in order. Only infrastructure failures
+trigger fallback — a real verdict from the primary stops the chain. Each fallback supports
+`base_url`, `model`, `api_key_env`, `timeout`, `max_chars`, and `extra_body`; policy
+settings (`block_above`, `warn_above`) are shared. See the
+[guide](natural-language-henxels.md#fallback-judges) for details.
 
 ## Where settings are read
 

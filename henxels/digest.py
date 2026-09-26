@@ -88,10 +88,13 @@ def _render_settings(contract: Contract) -> list[str]:
     if s.get("judge"):
         # No hostname here: where the judge lives is per machine (HENXELS_JUDGE_URL), and the
         # digest is committed. Say what happens, not where.
+        judge_raw = s.get("judge")
+        has_fallbacks = isinstance(judge_raw, dict) and judge_raw.get("fallbacks")
+        fb_note = "; fallback endpoints are tried automatically when the primary fails" if has_fallbacks else ""
         out.append(
             "- natural-language henxels (`make_sure_that`) are judged by a language model — the staged "
             "diff in scope is sent to the configured endpoint (`settings.judge`, overridable by "
-            "`HENXELS_JUDGE_URL`); a rule the judge can't verify only warns"
+            f"`HENXELS_JUDGE_URL`){fb_note}; a rule the judge can't verify only warns"
         )
     return out
 

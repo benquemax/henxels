@@ -254,3 +254,125 @@ def test_judge_truncates_evidence_to_budget():
     user = t.calls[0][2]["messages"][-1]["content"]
     assert "x" * 500 not in user
     assert "truncated" in user
+
+
+# --- fallback config --------------------------------------------------------
+
+
+def test_config_parses_fallbacks_list():
+    cfg = config_from_settings({"judge": {
+        "base_url": "http://primary/v1",
+        "model": "local",
+        "fallbacks": [
+            {"base_url": "http://backup/v1", "model": "gpt-4o-mini", "api_key_env": "OPENAI_API_KEY"},
+            {"base_url": "http://third/v1", "model": "llama-3"},
+        ],
+    }})
+    assert len(cfg.fallbacks) == 2
+    assert cfg.fallbacks[0].base_url == "http://backup/v1"
+    assert cfg.fallbacks[0].model == "gpt-4o-mini"
+    assert cfg.fallbacks[1].base_url == "http://third/v1"
+    assert cfg.fallbacks[1].model == "llama-3"
+
+
+def test_config_fallback_inherits_defaults_for_unset_keys():
+    """A fallback entry only needs base_url + model; everything else falls back to defaults."""
+    cfg = config_from_settings({"judge": {
+        "base_url": "http://primary/v1",
+        "model": "local",
+        "timeout": 120,
+        "fallbacks": [{"base_url": "http://backup/v1", "model": "remote"}],
+    }})
+    fb = cfg.fallbacks[0]
+    assert fb.timeout == judge_mod.DEFAULT_TIMEOUT  # not inherited from primary's 120
+    assert fb.max_chars == judge_mod.DEFAULT_MAX_CHARS
+    assert fb.block_above == judge_mod.DEFAULT_BLOCK_ABOVE
+
+
+def test_config_no_fallbacks_means_empty_tuple():
+    cfg = config_from_settings({"judge": {"base_url": "http://x/v1", "model": "m"}})
+    assert cfg.fallbacks == ()
+
+
+def test_config_fallbacks_env_override(monkeypatch):
+    """HENXELS_JUDGE_FALLBACKS (JSON array) appends to the contract's fallbacks."""
+    monkeypatch.setenv("HENXELS_JUDGE_FALLBACKS", '[{"base_url": "http://env-backup/v1", "model": "env-model"}]')
+    cfg = config_from_settings({"judge": {
+        "base_url": "http://primary/v1",
+        "model": "local",
+        "fallbacks": [{"base_url": "http://yaml-backup/v1", "model": "yaml-model"}],
+    }})
+    assert len(cfg.fallbacks) == 2
+    assert cfg.fallbacks[0].base_url == "http://yaml-backup/v1"
+    assert cfg.fallbacks[1].base_url == "http://env-backup/v1"
+    assert cfg.fallbacks[1].model == "env-model"
+
+
+def test_config_bad_fallbacks_env_is_ignored(monkeypatch):
+    monkeypatch.setenv("HENXELS_JUDGE_FALLBACKS", "{not json")
+    cfg = config_from_settings({"judge": True})
+    assert cfg.fallbacks == ()
+
+
+# --- fallback transport -----------------------------------------------------
+
+
+def test_judge_tries_fallback_on_primary_transport_error():
+    primary_t = FakeTransport(exc=OSError("connection refused"))
+    backup_t = FakeTransport(reply=_resp('{"holds": true, "reason": "from backup"}'))
+    cfg = _cfg(fallbacks=(_cfg(base_url="http://backup/v1", model="backup-m"),))
+    j = OpenAICompatibleJudge(cfg, transport=primary_t)
+    # Override the transport per-fallback by patching _make_judge_for_config
+    j._transports = {cfg.base_url: primary_t, cfg.fallbacks[0].base_url: backup_t}
+    v = j.judge("s", "", "e")
+    assert v.holds is True
+    assert v.reason == "from backup"
+    assert v.model == "backup-m"
+
+
+def test_judge_tries_all_fallbacks_in_order():
+    t1 = FakeTransport(exc=OSError("primary down"))
+    t2 = FakeTransport(exc=OSError("first backup down"))
+    t3 = FakeTransport(reply=_resp('{"holds": false, "reason": "third answered"}'))
+    fb1 = _cfg(base_url="http://fb1/v1", model="fb1-m")
+    fb2 = _cfg(base_url="http://fb2/v1", model="fb2-m")
+    cfg = _cfg(fallbacks=(fb1, fb2))
+    j = OpenAICompatibleJudge(cfg, transport=t1)
+    j._transports = {cfg.base_url: t1, fb1.base_url: t2, fb2.base_url: t3}
+    v = j.judge("s", "", "e")
+    assert v.holds is False
+    assert v.model == "fb2-m"
+
+
+def test_judge_returns_last_error_when_all_fail():
+    t1 = FakeTransport(exc=OSError("primary down"))
+    t2 = FakeTransport(exc=OSError("backup down"))
+    fb = _cfg(base_url="http://fb/v1", model="fb-m")
+    cfg = _cfg(fallbacks=(fb,))
+    j = OpenAICompatibleJudge(cfg, transport=t1)
+    j._transports = {cfg.base_url: t1, fb.base_url: t2}
+    v = j.judge("s", "", "e")
+    assert v.holds is None
+    assert "backup down" in v.error  # last error wins
+
+
+def test_judge_does_not_fallback_on_a_real_verdict():
+    """A confident 'does not hold' from the primary is a real answer — don't shop around."""
+    primary_t = FakeTransport(reply=_resp('{"holds": false, "reason": "nope"}'))
+    backup_t = FakeTransport(reply=_resp('{"holds": true, "reason": "sure"}'))
+    fb = _cfg(base_url="http://fb/v1", model="fb-m")
+    cfg = _cfg(fallbacks=(fb,))
+    j = OpenAICompatibleJudge(cfg, transport=primary_t)
+    j._transports = {cfg.base_url: primary_t, fb.base_url: backup_t}
+    v = j.judge("s", "", "e")
+    assert v.holds is False
+    assert v.reason == "nope"
+    assert backup_t.calls == []  # backup was never asked
+
+
+def test_judge_without_fallbacks_works_as_before():
+    t = FakeTransport(reply=_resp('{"holds": true, "reason": "ok"}'))
+    j = OpenAICompatibleJudge(_cfg(), transport=t)
+    v = j.judge("s", "", "e")
+    assert v.holds is True
+    assert v.model is None  # no fallback used → model stays None

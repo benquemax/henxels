@@ -234,3 +234,48 @@ henxels:
     sandbox.write(repo, "README.md", "# tool\n\nFlags:\n\n- `--verbose`: talk more\n- `--json`: print JSON\n")
     fixed = sandbox.commit_all(repo, "document --json")
     assert fixed.returncode == 0, output_of(fixed)
+
+
+@pytest.mark.skipif(not LIVE_URL, reason="set HENXELS_JUDGE_URL (and HENXELS_JUDGE_MODEL) to run against a real judge")
+def test_live_judge_chunks_large_diffs(sandbox):
+    """A real model with a tiny max_chars forces chunking — the verdict must still be correct."""
+    repo = sandbox.repo()
+    # Seed several files so the diff will exceed our tiny max_chars
+    for i in range(4):
+        sandbox.write(repo, f"module{i}.py", f"# module {i}\ndef func_{i}():\n    pass\n")
+    sandbox.write(repo, "README.md", "# project\n")
+    seeded = sandbox.commit_all(repo, "seed")
+    assert seeded.returncode == 0, output_of(seeded)
+
+    sandbox.env.update(LIVE_ENV)
+    # max_chars: 500 is intentionally tiny — each file's diff will be ~100-200 chars,
+    # so 4 files can't fit in one chunk. The judge must be called multiple times.
+    sandbox.write(repo, "henxels.yaml", """settings:
+  judge:
+    api_key_env: HENXELS_JUDGE_KEY
+    timeout: 600
+    max_chars: 500
+henxels:
+  - henxel: "Every Python module has a docstring at the top"
+    in: ./*.py
+    make_sure_that: true
+""")
+    sandbox.henxels("init", cwd=repo)
+    contracted = sandbox.commit_all(repo, "contract")
+    assert contracted.returncode == 0, output_of(contracted)
+
+    # Modify all modules — none have docstrings, so the judge should say "does not hold"
+    for i in range(4):
+        sandbox.write(repo, f"module{i}.py", f"# module {i}\ndef func_{i}():\n    return {i}\n")
+    blocked = sandbox.commit_all(repo, "modify all modules without docstrings")
+    out = output_of(blocked)
+    # The judge should catch the missing docstrings even though the diff was chunked
+    assert blocked.returncode != 0 or "could not be judged" in out, out
+    if blocked.returncode != 0:
+        assert "docstring" in out.lower() or "Every Python module" in out
+
+    # Fix: add docstrings to all modules — now every chunk should pass
+    for i in range(4):
+        sandbox.write(repo, f"module{i}.py", f'"""Module {i}."""\n# module {i}\ndef func_{i}():\n    return {i}\n')
+    fixed = sandbox.commit_all(repo, "add docstrings to all modules")
+    assert fixed.returncode == 0, output_of(fixed)

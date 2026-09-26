@@ -77,7 +77,24 @@
                 "max_chars": { "type": "integer", "minimum": 1000, "description": "Evidence (diff) budget per verdict; longer diffs are truncated (default 60000)." },
                 "extra_body": { "type": "object", "description": "Extra JSON merged into the request body, e.g. {\"chat_template_kwargs\": {\"enable_thinking\": false}} for vLLM/Qwen." },
                 "block_above": { "type": "number", "minimum": 0, "maximum": 1, "description": "A `level: block` henxel blocks only when the judge's confidence is at least this; below it the failure warns (default 0.8). Confidence needs logprobs from the endpoint; without them a failure is taken at face value." },
-                "warn_above": { "type": "number", "minimum": 0, "maximum": 1, "description": "Failures below this confidence are dropped entirely (default 0)." }
+                "warn_above": { "type": "number", "minimum": 0, "maximum": 1, "description": "Failures below this confidence are dropped entirely (default 0)." },
+                "fallbacks": {
+                  "type": "array",
+                  "description": "Backup judge endpoints tried in order when the primary fails (transport error, bad response). Each entry supports base_url, model, api_key_env, timeout, max_chars, extra_body. A real verdict from any endpoint stops the chain — only infrastructure failures trigger fallback.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "base_url": { "type": "string", "description": "Endpoint root ending in /v1." },
+                      "model": { "type": "string", "description": "Model id as the endpoint knows it." },
+                      "api_key_env": { "type": "string", "description": "Environment variable holding the API key." },
+                      "timeout": { "type": "number", "minimum": 1, "description": "Seconds to wait per verdict before failing open (default 60)." },
+                      "max_chars": { "type": "integer", "minimum": 1000, "description": "Evidence (diff) budget per verdict (default 60000)." },
+                      "extra_body": { "type": "object", "description": "Extra JSON merged into the request body." }
+                    },
+                    "required": ["base_url", "model"]
+                  }
+                }
               }
             }
           ]
@@ -175,11 +192,20 @@
           }
         },
         "make_sure_that": {
-          "description": "A natural-language rule judged by a language model (settings.judge) against the staged changes in scope. `true` judges the henxel's own sentence (and `why:`); a string or list of strings judges those sentences instead. `@path` in a sentence hands that repo file to the judge. Diff-only: passes when nothing in scope changed. Unsure or unreachable judges only warn.",
+          "description": "A natural-language rule judged by a language model (settings.judge). `true` judges the henxel's own sentence (and `why:`) against the staged diff; a string or list judges those sentences instead. A mapping with `text`/`sentences` and `evidence: full` sends complete file contents (corpus gate, works without a diff). `@path` in a sentence hands that repo file to the judge. Unsure or unreachable judges only warn.",
           "oneOf": [
             { "type": "boolean" },
             { "type": "string" },
-            { "type": "array", "items": { "type": "string" } }
+            { "type": "array", "items": { "type": "string" } },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "text": { "type": "string", "description": "A single sentence to judge." },
+                "sentences": { "type": "array", "items": { "type": "string" }, "description": "Multiple sentences to judge." },
+                "evidence": { "type": "string", "enum": ["diff", "full"], "description": "What the judge sees: `diff` (default, staged changes only) or `full` (complete file contents of all scope files, enabling corpus-wide rules)." }
+              }
+            }
           ]
         },
         "markdown_lint": { "type": "boolean" },

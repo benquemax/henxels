@@ -100,14 +100,68 @@ is a judge, the machine decides *where*.
 > can contain secrets and unreleased work. Prefer a local endpoint; if you use a hosted
 > one, that's a conscious decision the committed `henxels.yaml` makes visible.
 
+### Fallback judges
+
+A local model can be down, a hosted API can timeout. Rather than failing open every time,
+you can list **fallback** endpoints that are tried in order when the primary fails:
+
+```yaml
+settings:
+  judge:
+    base_url: http://localhost:11434/v1   # primary: local Ollama
+    model: qwen3:8b
+    fallbacks:
+      - base_url: https://api.openai.com/v1   # first backup
+        model: gpt-4o-mini
+        api_key_env: OPENAI_API_KEY
+      - base_url: https://openrouter.ai/api/v1  # second backup
+        model: meta-llama/llama-3-8b-instruct
+        api_key_env: OPENROUTER_API_KEY
+```
+
+Each fallback entry supports `base_url`, `model`, `api_key_env`, `timeout`, `max_chars`,
+and `extra_body`. Policy settings (`block_above`, `warn_above`) stay on the primary — they
+govern what to do with a verdict, not how to reach the judge.
+
+**Only infrastructure failures trigger fallback.** A confident "does not hold" from the
+primary is a real answer — falling back would let a failing check pass by shopping for a
+more lenient model. Transport errors, HTTP errors, bad JSON, and refused requests all count
+as failures; a parseable verdict does not.
+
+`HENXELS_JUDGE_FALLBACKS` (a JSON array) appends additional fallbacks from the environment,
+so a developer can add a personal backup without editing the committed contract.
+
 ## What the judge sees
 
-Only **change**. The evidence is a unified diff (HEAD → index) of the staged files in the
-henxel's scope, plus a note for deletions. Consequences:
+By default, only **change**. The evidence is a unified diff (HEAD → index) of the staged
+files in the henxel's scope, plus a note for deletions. Consequences:
 
 - `henxels check --all` skips these henxels — there is no change to judge.
 - A commit that doesn't touch the scope costs **no tokens** and is never nagged.
 - The judge is told to judge only what the diff shows, not to assume work elsewhere.
+
+### Corpus-wide rules with `evidence: full`
+
+Diff-only mode structurally cannot verify properties across the entire corpus — if you
+have 14 chapters and only change one, the judge only sees that one chapter's diff. For
+rules like "all chapters follow convention X", use the mapping form with `evidence: full`:
+
+```yaml
+henxels:
+  - henxel: "All chapters follow the style guide"
+    in: ./chapters/*
+    make_sure_that:
+      text: "Every chapter uses consistent heading levels and tone"
+      evidence: full
+```
+
+With `evidence: full`, the judge sees the **complete content** of every file in scope,
+not just diffs. This works even without staged changes (`check --all` included), making
+`make_sure_that` a corpus gate, not just a diff gate. The tradeoff is cost: every file
+in scope is sent on every check, so keep the scope tight and the model cheap.
+
+The dict form also accepts `sentences:` (a list) instead of `text:` for multiple
+sentences, and `evidence:` defaults to `diff` when omitted.
 
 ## Severity follows confidence
 
@@ -142,6 +196,22 @@ locked repository.
 Verdicts are cached in the private git dir (`.git/henxels/judge-cache.json`) keyed by
 model, endpoint, sentence, background and evidence, so a re-run of the hooks on the same
 staged change asks nothing. Outages aren't cached. Requests use temperature 0.
+
+## Large diffs: automatic chunking
+
+When the evidence exceeds `max_chars` (default 60,000 characters), it is automatically
+split into multiple requests — one per chunk. Chunks are split on **file boundaries**:
+each file's diff or content is an atomic unit and is never split mid-file. If a single
+file exceeds the budget, it is sent alone (the judge truncates at prompt level).
+
+The verdicts are aggregated: if **any** chunk says "does not hold", the overall result
+fails. All chunks must say "holds" for the rule to pass. Each chunk is cached
+independently, so a re-run only re-asks for chunks whose evidence changed.
+
+This means huge diffs (refactors, bulk renames, generated files) are handled correctly
+instead of being silently truncated. The tradeoff is cost: more chunks = more API calls.
+Keep `max_chars` high enough to fit most commits in one chunk; lower it only when your
+endpoint has a hard context limit.
 
 ## Choosing a model
 

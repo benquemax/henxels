@@ -1,10 +1,16 @@
 """Judgement statements: natural-language henxels, verified by a language model.
 
-``make_sure_that`` hands the henxel's own sentence (or its own sentences) plus the
-staged changes in scope to the configured judge (``settings.judge`` — any
-OpenAI-compatible endpoint) and turns the verdict into instructions. It only ever
-looks at *change*: outside a staged context (``check --all``) there is nothing to
-judge and it passes; when the scope wasn't touched, no tokens are spent.
+``make_sure_that`` hands the henxel's own sentence (or its own sentences) plus evidence
+to the configured judge (``settings.judge`` — any OpenAI-compatible endpoint) and turns
+the verdict into instructions. By default the evidence is the **staged diff** (HEAD →
+index) of files in scope — outside a staged context (``check --all``) there is nothing
+to judge and it passes; when the scope wasn't touched, no tokens are spent.
+
+With ``evidence: full`` (dict param form), the judge sees the **complete content** of
+every file in scope, not just diffs. This enables corpus-wide rules ("all chapters
+follow convention X") that diff-only mode structurally cannot verify. Full evidence
+works even without a staged diff, making ``make_sure_that`` a corpus gate, not just a
+diff gate.
 
 A judge is fallible, so severity follows its confidence: a failure the judge is sure
 about is a plain instruction (blocks if the henxel does); an unsure one — or a judge
@@ -40,20 +46,53 @@ def make_judge(settings: dict):
     return None if cfg is None else OpenAICompatibleJudge(cfg)
 
 
+def _parse_param(param, henxel):
+    """Normalize the make_sure_that param into (sentences, why, evidence_mode).
+
+    Accepted forms:
+      - True / None     → ([henxel.text], henxel.why, "diff")
+      - "string"        → (["string"], "", "diff")
+      - ["a", "b"]      → (["a", "b"], "", "diff")
+      - {text: "..."}   → (["..."], "", evidence or "diff")
+      - {sentences: [...]} → ([...], "", evidence or "diff")
+    """
+    if isinstance(param, dict):
+        evidence_mode = str(param.get("evidence", "diff")).lower()
+        raw_sentences = param.get("sentences") or param.get("text")
+        if raw_sentences is None:
+            sentences = [henxel.text]
+            why = henxel.why
+        elif isinstance(raw_sentences, list):
+            sentences = [str(s) for s in raw_sentences]
+            why = ""
+        else:
+            sentences = [str(raw_sentences)]
+            why = ""
+        return sentences, why, evidence_mode
+    if param is True or param is None:
+        return [henxel.text], henxel.why, "diff"
+    return [str(s) for s in as_list(param)], "", "diff"
+
+
 @statement(
     "make_sure_that",
     help="a natural-language rule: the staged changes in scope are shown to a language model (settings.judge) which says whether the sentence holds",
     builtin=True,
 )
 def make_sure_that(param, henxel, scope, diff, settings):
-    if param is False or diff is None:
+    if param is False:
         return None
-    evidence = build_evidence(scope.files, diff)
-    if not evidence:
-        return None  # nothing in scope changed — nothing to judge, no tokens spent
 
-    sentences = [henxel.text] if param is True or param is None else [str(s) for s in as_list(param)]
-    why = henxel.why if param is True or param is None else ""
+    sentences, why, evidence_mode = _parse_param(param, henxel)
+
+    if evidence_mode == "full":
+        blocks = build_full_evidence_blocks(scope.files, scope)
+    else:
+        if diff is None:
+            return None
+        blocks = build_evidence_blocks(scope.files, diff)
+    if not blocks:
+        return None  # nothing to judge — no tokens spent
 
     judge = make_judge(settings)
     if judge is None:
@@ -63,16 +102,34 @@ def make_sure_that(param, henxel, scope, diff, settings):
         )]
 
     cfg = config_from_settings(settings)
+    chunks = chunk_evidence(blocks, cfg.max_chars)
+
     out: list[str] = []
     for sentence in sentences:
         references, problems = resolve_references(sentence + "\n" + why, scope, diff)
         if problems:
             out.extend(Advisory(f"'{sentence}' could not be judged — {p} (commit allowed; verify by hand)") for p in problems)
             continue
-        verdict = _judge_cached(judge, cfg, scope.root, sentence, why, evidence, references)
-        instruction = _to_instruction(sentence, verdict, cfg.block_above, cfg.warn_above)
-        if instruction is not None:
-            out.append(instruction)
+        # Judge each chunk and aggregate: any failure → overall failure
+        worst: Verdict | None = None
+        for chunk in chunks:
+            v = _judge_cached(judge, cfg, scope.root, sentence, why, chunk, references)
+            if v.holds is None:
+                # Error verdict: keep going to try other chunks, but remember the error
+                if worst is None or worst.holds is not None:
+                    worst = v
+            elif not v.holds:
+                # Definite failure: stop early, this is the answer
+                worst = v
+                break
+            else:
+                # Holds: only record if we don't already have a failure
+                if worst is None:
+                    worst = v
+        if worst is not None:
+            instruction = _to_instruction(sentence, worst, cfg.block_above, cfg.warn_above)
+            if instruction is not None:
+                out.append(instruction)
     return out or None
 
 
@@ -120,15 +177,81 @@ def _within(path: Path, root: Path) -> bool:
         return False
 
 
-def build_evidence(files, diff) -> str:
-    """A unified diff (HEAD → index) of the staged files in scope; deletions listed."""
-    parts: list[str] = []
+def build_evidence_blocks(files, diff) -> list[str]:
+    """Per-file unified diff blocks (HEAD → index) of the staged files in scope.
+
+    Returns a list of non-empty strings, one per changed/deleted file. Each block
+    is an atomic unit for chunking — never split mid-file.
+    """
+    blocks: list[str] = []
     for f in sorted(files):
         if f in diff.deleted:
-            parts.append(f"--- a/{f}\n+++ /dev/null\n(file deleted)\n")
+            blocks.append(f"--- a/{f}\n+++ /dev/null\n(file deleted)\n")
         elif f in diff.changed:
-            parts.append(_unified(f, diff.old_text(f), diff.new_text(f)))
-    return "\n".join(p for p in parts if p)
+            block = _unified(f, diff.old_text(f), diff.new_text(f))
+            if block:
+                blocks.append(block)
+    return blocks
+
+
+def build_evidence(files, diff) -> str:
+    """A unified diff (HEAD → index) of the staged files in scope; deletions listed."""
+    return "\n".join(build_evidence_blocks(files, diff))
+
+
+def build_full_evidence_blocks(files, scope) -> list[str]:
+    """Per-file content blocks for every file in scope — a corpus gate, not a diff gate.
+
+    Returns a list of strings, one per file. Each block includes the file path as a
+    header and is an atomic unit for chunking.
+    """
+    from henxels.diffinfo import staged_diff
+
+    diff = staged_diff(scope.root)
+    blocks: list[str] = []
+    for f in sorted(files):
+        # Prefer the staged version (what would be committed); fall back to working tree
+        content = None
+        if diff is not None and f in diff.changed:
+            content = diff.new_text(f)
+        if content is None:
+            content = scope.read_text(f)
+        if content is not None:
+            blocks.append(f"--- {f} ---\n{content.rstrip()}\n--- end of {f} ---")
+    return blocks
+
+
+def build_full_evidence(files, scope) -> str:
+    """The complete content of every file in scope — a corpus gate, not a diff gate."""
+    return "\n\n".join(build_full_evidence_blocks(files, scope))
+
+
+def chunk_evidence(blocks: list[str], max_chars: int) -> list[str]:
+    """Pack per-file evidence blocks into chunks that each fit within max_chars.
+
+    Blocks are never split — each file's content is atomic. If a single block exceeds
+    max_chars, it becomes its own chunk (the judge will truncate at prompt level).
+    """
+    if not blocks:
+        return []
+    chunks: list[str] = []
+    current_parts: list[str] = []
+    current_size = 0
+    for block in blocks:
+        block_size = len(block)
+        # Separator cost: "\n\n" between blocks within a chunk
+        sep_cost = 2 if current_parts else 0
+        if current_parts and current_size + sep_cost + block_size > max_chars:
+            # Flush current chunk
+            chunks.append("\n\n".join(current_parts))
+            current_parts = []
+            current_size = 0
+            sep_cost = 0
+        current_parts.append(block)
+        current_size += sep_cost + block_size
+    if current_parts:
+        chunks.append("\n\n".join(current_parts))
+    return chunks
 
 
 def _unified(rel: str, old: str | None, new: str | None) -> str:
@@ -143,7 +266,8 @@ def _unified(rel: str, old: str | None, new: str | None) -> str:
 
 def _to_instruction(sentence: str, v: Verdict, block_above: float, warn_above: float) -> str | None:
     if v.holds is None:
-        return Advisory(f"'{sentence}' could not be judged — {v.error or 'unknown judge error'} (commit allowed; verify by hand)")
+        detail = v.error or "unknown judge error"
+        return Advisory(f"'{sentence}' could not be judged — {detail} (commit allowed; verify by hand)")
     if v.holds:
         return None
     reason = v.reason or "the judge says this does not hold"
@@ -172,7 +296,10 @@ def _judge_cached(
         return Verdict(**hit)
     verdict = judge.judge(sentence, why, evidence, references)
     if verdict.holds is not None:  # never cache an outage
-        cache[key] = {"holds": verdict.holds, "confidence": verdict.confidence, "reason": verdict.reason, "error": None}
+        cache[key] = {
+            "holds": verdict.holds, "confidence": verdict.confidence, "reason": verdict.reason,
+            "error": None, "model": verdict.model, "base_url": verdict.base_url,
+        }
         _save_cache(root, cache)
     return verdict
 

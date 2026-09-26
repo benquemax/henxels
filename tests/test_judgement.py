@@ -329,3 +329,240 @@ def test_runner_keeps_block_when_confident(fake, tmp_path):
     c = Contract(settings=SETTINGS, henxels=[_hx(level="block")])
     findings = run_contract(c, r, ["a.py"], diff=staged_diff(r))
     assert findings[0].is_block
+
+
+# --- fallback judges --------------------------------------------------------
+
+
+def test_fallback_judge_is_used_when_primary_fails(monkeypatch, tmp_path):
+    """When the primary transport fails, the fallback is tried and its verdict is used."""
+    r = _repo(tmp_path)
+    _stage(r, "a.py", "x\n")
+    settings = {
+        "judge": {
+            "base_url": "http://primary/v1",
+            "model": "primary-m",
+            "fallbacks": [{"base_url": "http://backup/v1", "model": "backup-m"}],
+        }
+    }
+    from henxels.judge import OpenAICompatibleJudge
+
+    tried = []
+
+    class TrackingTransport:
+        """Routes requests to different fake responses based on URL."""
+        def __call__(self, url, headers, body, timeout):
+            tried.append(url)
+            if "primary" in url:
+                raise OSError("primary down")
+            import json as _json
+            return _json.dumps({"choices": [{"message": {"content": '{"holds": true, "reason": "backup ok"}'}}]}).encode()
+
+    monkeypatch.setattr(judgement, "OpenAICompatibleJudge", lambda cfg: OpenAICompatibleJudge(cfg, transport=TrackingTransport()))
+    out = make_sure_that(True, _hx(), _scope(r, ["a.py"], settings=settings), staged_diff(r), settings)
+    assert out is None  # backup said holds=True → no finding
+    assert any("primary" in u for u in tried)
+    assert any("backup" in u for u in tried)
+
+
+def test_all_judges_failing_mentions_last_error(monkeypatch, tmp_path):
+    """When primary and all fallbacks fail, the advisory mentions the last error."""
+    r = _repo(tmp_path)
+    _stage(r, "a.py", "x\n")
+    settings = {
+        "judge": {
+            "base_url": "http://primary/v1",
+            "model": "primary-m",
+            "fallbacks": [{"base_url": "http://backup/v1", "model": "backup-m"}],
+        }
+    }
+    from henxels.judge import OpenAICompatibleJudge
+
+    class FailAllTransport:
+        def __call__(self, url, headers, body, timeout):
+            raise OSError(f"{url} unreachable")
+
+    monkeypatch.setattr(judgement, "OpenAICompatibleJudge", lambda cfg: OpenAICompatibleJudge(cfg, transport=FailAllTransport()))
+    out = make_sure_that(True, _hx(), _scope(r, ["a.py"], settings=settings), staged_diff(r), settings)
+    assert len(out) == 1 and isinstance(out[0], Advisory)
+    assert "could not be judged" in out[0]
+
+
+# --- evidence mode (full content vs diff-only) ------------------------------
+
+
+def test_evidence_full_sends_file_contents_not_diffs(fake, tmp_path):
+    """evidence: full sends the complete file contents of all scope files, not diffs."""
+    r = _repo(tmp_path)
+    _commit(r, "a.py", "original content\n")
+    _stage(r, "a.py", "modified content\n")
+    j = fake(Verdict(holds=True, reason="ok"))
+    param = {"text": "all files follow convention X", "evidence": "full"}
+    out = make_sure_that(param, _hx(), _scope(r, ["a.py"]), staged_diff(r), SETTINGS)
+    assert out is None
+    sentence, why, evidence, _ = j.calls[0]
+    assert sentence == "all files follow convention X"
+    # Full evidence contains the file content, not a diff
+    assert "modified content" in evidence
+    assert "--- a/a.py" not in evidence  # no unified diff headers
+
+
+def test_evidence_full_includes_unchanged_files(fake, tmp_path):
+    """evidence: full includes files in scope even when they have no staged changes."""
+    r = _repo(tmp_path)
+    _commit(r, "a.py", "chapter one\n")
+    _commit(r, "b.py", "chapter two\n")
+    _stage(r, "a.py", "chapter one revised\n")  # only a.py changed
+    j = fake(Verdict(holds=True, reason="ok"))
+    param = {"text": "all chapters are consistent", "evidence": "full"}
+    # Both files are in scope, but only a.py has changes
+    out = make_sure_that(param, _hx(), _scope(r, ["a.py", "b.py"]), staged_diff(r), SETTINGS)
+    assert out is None
+    _, _, evidence, _ = j.calls[0]
+    assert "chapter one revised" in evidence  # changed file
+    assert "chapter two" in evidence  # unchanged file still included
+
+
+def test_evidence_full_works_without_diff(fake, tmp_path):
+    """evidence: full works even when diff is None (corpus gate, not diff gate)."""
+    r = _repo(tmp_path)
+    _commit(r, "a.py", "content\n")
+    j = fake(Verdict(holds=True, reason="ok"))
+    param = {"text": "all files are valid", "evidence": "full"}
+    out = make_sure_that(param, _hx(), _scope(r, ["a.py"]), None, SETTINGS)
+    assert out is None
+    assert len(j.calls) == 1
+    _, _, evidence, _ = j.calls[0]
+    assert "content" in evidence
+
+
+def test_evidence_default_is_diff(fake, tmp_path):
+    """Without evidence key, behavior is unchanged: diff-only, skips when no changes."""
+    r = _repo(tmp_path)
+    _commit(r, "a.py", "content\n")
+    j = fake()
+    # No staged changes → diff exists but evidence is empty → passes silently
+    out = make_sure_that(True, _hx(), _scope(r, ["a.py"]), staged_diff(r), SETTINGS)
+    assert out is None
+    assert j.calls == []  # no tokens spent
+
+
+def test_evidence_full_with_sentences_list(fake, tmp_path):
+    """evidence: full works with a list of sentences."""
+    r = _repo(tmp_path)
+    _commit(r, "a.py", "content\n")
+    j = fake(Verdict(holds=True, reason="ok"), Verdict(holds=True, reason="ok"))
+    param = {"sentences": ["rule one", "rule two"], "evidence": "full"}
+    out = make_sure_that(param, _hx(), _scope(r, ["a.py"]), None, SETTINGS)
+    assert out is None
+    assert [c[0] for c in j.calls] == ["rule one", "rule two"]
+
+
+def test_evidence_full_is_truncated_at_prompt_level(fake, tmp_path):
+    """Full evidence can be large; the judge's max_chars budget truncates the prompt."""
+    r = _repo(tmp_path)
+    _commit(r, "big.py", "x" * 100_000 + "\n")
+    j = fake(Verdict(holds=True, reason="ok"))
+    param = {"text": "file is valid", "evidence": "full"}
+    settings = {"judge": {"base_url": "http://fake/v1", "model": "m", "max_chars": 5000}}
+    out = make_sure_that(param, _hx(), _scope(r, ["big.py"]), None, settings)
+    assert out is None
+    # The evidence passed to the judge is the raw full content; truncation happens
+    # inside the judge's prompt builder (_user_prompt), not at the evidence level.
+    _, _, evidence, _ = j.calls[0]
+    assert "x" * 100_000 in evidence  # full content reaches the judge object
+
+
+def test_build_full_evidence_includes_all_scope_files(tmp_path):
+    """build_full_evidence returns content of every file in scope."""
+    from henxels.statements.builtins.judgement import build_full_evidence
+    r = _repo(tmp_path)
+    _commit(r, "a.py", "alpha\n")
+    _commit(r, "b.py", "beta\n")
+    scope = _scope(r, ["a.py", "b.py"])
+    ev = build_full_evidence(scope.files, scope)
+    assert "alpha" in ev and "beta" in ev
+    assert "a.py" in ev and "b.py" in ev  # filenames visible
+
+
+# --- evidence chunking ------------------------------------------------------
+
+
+def test_chunk_evidence_splits_on_file_boundaries():
+    """Chunks never split mid-file; each file's block is atomic."""
+    from henxels.statements.builtins.judgement import chunk_evidence
+    blocks = [
+        "--- a.py ---\n" + "a" * 3000 + "\n--- end ---",
+        "--- b.py ---\n" + "b" * 3000 + "\n--- end ---",
+        "--- c.py ---\n" + "c" * 3000 + "\n--- end ---",
+    ]
+    chunks = chunk_evidence(blocks, max_chars=7000)
+    assert len(chunks) == 2  # first two fit in one chunk, third in another
+    assert "a.py" in chunks[0] and "b.py" in chunks[0]
+    assert "c.py" in chunks[1]
+
+
+def test_chunk_evidence_single_oversized_file_is_its_own_chunk():
+    """A file larger than max_chars is sent alone — can't split further."""
+    from henxels.statements.builtins.judgement import chunk_evidence
+    blocks = [
+        "--- big.py ---\n" + "x" * 100_000 + "\n--- end ---",
+        "--- small.py ---\n" + "y" * 100 + "\n--- end ---",
+    ]
+    chunks = chunk_evidence(blocks, max_chars=60_000)
+    assert len(chunks) == 2
+    assert "big.py" in chunks[0]
+    assert "small.py" in chunks[1]
+
+
+def test_chunk_evidence_under_budget_is_one_chunk():
+    """When everything fits, no splitting happens."""
+    from henxels.statements.builtins.judgement import chunk_evidence
+    blocks = ["--- a.py ---\nshort\n--- end ---"]
+    chunks = chunk_evidence(blocks, max_chars=60_000)
+    assert len(chunks) == 1
+    assert chunks[0] == blocks[0]
+
+
+def test_chunked_judging_sends_multiple_requests(fake, tmp_path):
+    """When evidence exceeds max_chars, the judge is called once per chunk."""
+    r = _repo(tmp_path)
+    # Create several files that together exceed the budget
+    for i in range(5):
+        _stage(r, f"file{i}.py", f"content_{i}\n" * 500)
+    j = fake(*[Verdict(holds=True, reason="ok")] * 5)
+    settings = {"judge": {"base_url": "http://fake/v1", "model": "m", "max_chars": 2000}}
+    out = make_sure_that(True, _hx(), _scope(r, [f"file{i}.py" for i in range(5)]), staged_diff(r), settings)
+    assert out is None  # all chunks said holds
+    assert len(j.calls) > 1  # multiple requests were made
+
+
+def test_chunked_judging_fails_if_any_chunk_fails(fake, tmp_path):
+    """If any chunk says 'does not hold', the overall result fails."""
+    r = _repo(tmp_path)
+    for i in range(4):
+        _stage(r, f"file{i}.py", f"content_{i}\n" * 500)
+    # First chunk passes, second chunk fails
+    fake(
+        Verdict(holds=True, reason="ok"),
+        Verdict(holds=False, confidence=0.95, reason="file2 violates the rule"),
+    )
+    settings = {"judge": {"base_url": "http://fake/v1", "model": "m", "max_chars": 2000}}
+    out = make_sure_that(True, _hx(), _scope(r, [f"file{i}.py" for i in range(4)]), staged_diff(r), settings)
+    assert out is not None
+    assert any("violates" in str(o) for o in out)
+
+
+def test_chunked_judging_caches_per_chunk(fake, tmp_path):
+    """Each chunk is cached independently; re-run only asks for changed chunks."""
+    r = _repo(tmp_path)
+    for i in range(4):
+        _stage(r, f"file{i}.py", f"content_{i}\n" * 500)
+    j = fake(*[Verdict(holds=True, reason="ok")] * 4)
+    settings = {"judge": {"base_url": "http://fake/v1", "model": "m", "max_chars": 2000}}
+    args = (True, _hx(), _scope(r, [f"file{i}.py" for i in range(4)]), staged_diff(r), settings)
+    make_sure_that(*args)
+    first_calls = len(j.calls)
+    assert first_calls > 1
+    make_sure_that(*args)
+    assert len(j.calls) == first_calls  # all cached, no new calls

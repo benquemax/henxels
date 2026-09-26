@@ -60,6 +60,7 @@ class JudgeConfig:
     extra_body: dict = field(default_factory=dict)
     block_above: float = DEFAULT_BLOCK_ABOVE
     warn_above: float = DEFAULT_WARN_ABOVE
+    fallbacks: tuple[JudgeConfig, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -68,6 +69,8 @@ class Verdict:
     confidence: float | None = None  # P(the given answer) in [0, 1], when logprobs are available
     reason: str | None = None
     error: str | None = None
+    model: str | None = None  # which model answered (set when a fallback was used)
+    base_url: str | None = None  # which endpoint answered (set when a fallback was used)
 
 
 # Where the judge lives is a fact about a machine, not a rule of the project, so these
@@ -76,6 +79,24 @@ ENV_URL = "HENXELS_JUDGE_URL"
 ENV_MODEL = "HENXELS_JUDGE_MODEL"
 ENV_TIMEOUT = "HENXELS_JUDGE_TIMEOUT"
 ENV_EXTRA_BODY = "HENXELS_JUDGE_EXTRA_BODY"  # JSON, merged over the contract's extra_body
+ENV_FALLBACKS = "HENXELS_JUDGE_FALLBACKS"  # JSON array of fallback judge configs, appended to the contract's
+
+
+def _parse_one_judge(raw: dict) -> JudgeConfig:
+    """Parse a single judge config dict (used for both primary and fallback entries)."""
+    key_env = str(raw.get("api_key_env", DEFAULT_API_KEY_ENV))
+    key = os.environ.get(key_env) or None
+    extra_body = dict(raw.get("extra_body") or {})
+    return JudgeConfig(
+        base_url=str(raw.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
+        model=str(raw.get("model", DEFAULT_MODEL)),
+        api_key=key,
+        timeout=float(raw.get("timeout", DEFAULT_TIMEOUT)),
+        max_chars=int(raw.get("max_chars", DEFAULT_MAX_CHARS)),
+        extra_body=extra_body,
+        block_above=float(raw.get("block_above", DEFAULT_BLOCK_ABOVE)),
+        warn_above=float(raw.get("warn_above", DEFAULT_WARN_ABOVE)),
+    )
 
 
 def config_from_settings(settings: dict) -> JudgeConfig | None:
@@ -83,13 +104,12 @@ def config_from_settings(settings: dict) -> JudgeConfig | None:
 
     ``HENXELS_JUDGE_URL`` / ``_MODEL`` / ``_TIMEOUT`` / ``_EXTRA_BODY`` in the environment
     win over the contract, so a LAN endpoint never needs to be committed.
+    ``HENXELS_JUDGE_FALLBACKS`` (JSON array) appends fallback judges to the contract's list.
     """
     raw = (settings or {}).get("judge")
     if not raw:
         return None
     raw = raw if isinstance(raw, dict) else {}
-    key_env = str(raw.get("api_key_env", DEFAULT_API_KEY_ENV))
-    key = os.environ.get(key_env) or None
     env = os.environ
     extra_body = dict(raw.get("extra_body") or {})
     if env.get(ENV_EXTRA_BODY):
@@ -97,6 +117,19 @@ def config_from_settings(settings: dict) -> JudgeConfig | None:
             extra_body.update(json.loads(env[ENV_EXTRA_BODY]))
         except (ValueError, TypeError, AttributeError):
             pass  # a typo in the shell profile must not break every commit
+    # Parse fallbacks from YAML
+    fallbacks_raw = raw.get("fallbacks") or []
+    fallbacks = tuple(_parse_one_judge(fb) for fb in fallbacks_raw if isinstance(fb, dict))
+    # Append env fallbacks
+    if env.get(ENV_FALLBACKS):
+        try:
+            env_fbs = json.loads(env[ENV_FALLBACKS])
+            if isinstance(env_fbs, list):
+                fallbacks += tuple(_parse_one_judge(fb) for fb in env_fbs if isinstance(fb, dict))
+        except (ValueError, TypeError, AttributeError):
+            pass  # bad JSON in env must not break commits
+    key_env = str(raw.get("api_key_env", DEFAULT_API_KEY_ENV))
+    key = os.environ.get(key_env) or None
     return JudgeConfig(
         base_url=str(env.get(ENV_URL) or raw.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
         model=str(env.get(ENV_MODEL) or raw.get("model", DEFAULT_MODEL)),
@@ -106,6 +139,7 @@ def config_from_settings(settings: dict) -> JudgeConfig | None:
         extra_body=extra_body,
         block_above=float(raw.get("block_above", DEFAULT_BLOCK_ABOVE)),
         warn_above=float(raw.get("warn_above", DEFAULT_WARN_ABOVE)),
+        fallbacks=fallbacks,
     )
 
 
@@ -119,15 +153,28 @@ def _urllib_transport(url: str, headers: dict, body: bytes, timeout: float) -> b
 
 
 class OpenAICompatibleJudge:
-    """POST /chat/completions on any OpenAI-compatible server; parse a JSON verdict."""
+    """POST /chat/completions on any OpenAI-compatible server; parse a JSON verdict.
+
+    When the primary endpoint fails (transport error, bad response), fallback judges
+    are tried in order. A real verdict (holds=True or False) from any endpoint stops
+    the chain — only infrastructure failures trigger fallback.
+    """
 
     def __init__(self, config: JudgeConfig, transport: Transport | None = None):
         self.config = config
         self.transport = transport or _urllib_transport
+        # Test hook: override transports per base_url for deterministic fallback testing
+        self._transports: dict[str, Transport] | None = None
 
-    def judge(self, sentence: str, why: str, evidence: str, references: dict[str, str] | None = None) -> Verdict:
-        """``references`` maps ``@path`` names used in the sentence to their content."""
-        cfg = self.config
+    def _transport_for(self, base_url: str) -> Transport:
+        if self._transports and base_url in self._transports:
+            return self._transports[base_url]
+        return self.transport
+
+    def _try_one(
+        self, cfg: JudgeConfig, sentence: str, why: str, evidence: str, references: dict[str, str]
+    ) -> Verdict:
+        """Try a single endpoint. Returns a Verdict — holds=None means it failed."""
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if cfg.api_key:
             headers["Authorization"] = f"Bearer {cfg.api_key}"
@@ -139,12 +186,13 @@ class OpenAICompatibleJudge:
             "top_logprobs": 5,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": _user_prompt(sentence, why, evidence, cfg.max_chars, references or {})},
+                {"role": "user", "content": _user_prompt(sentence, why, evidence, cfg.max_chars, references)},
             ],
         }
         body.update(cfg.extra_body)
+        transport = self._transport_for(cfg.base_url)
         try:
-            raw = self.transport(f"{cfg.base_url}/chat/completions", headers, json.dumps(body).encode(), cfg.timeout)
+            raw = transport(f"{cfg.base_url}/chat/completions", headers, json.dumps(body).encode(), cfg.timeout)
         except urllib.error.HTTPError as exc:
             return Verdict(holds=None, error=f"judge at {cfg.base_url} answered HTTP {exc.code}")
         except Exception as exc:  # noqa: BLE001 - any transport failure fails open
@@ -159,6 +207,29 @@ class OpenAICompatibleJudge:
             msg = data["error"].get("message") if isinstance(data["error"], dict) else data["error"]
             return Verdict(holds=None, error=f"judge at {cfg.base_url} refused: {msg}")
         return parse_response(data)
+
+    def judge(self, sentence: str, why: str, evidence: str, references: dict[str, str] | None = None) -> Verdict:
+        """``references`` maps ``@path`` names used in the sentence to their content.
+
+        Tries the primary endpoint first, then each fallback in order. Only transport/
+        API failures trigger fallback — a real verdict (even 'does not hold') stops the chain.
+        """
+        refs = references or {}
+        v = self._try_one(self.config, sentence, why, evidence, refs)
+        if v.holds is not None:
+            return v  # primary gave a real answer
+        last_error = v.error
+        for fb_cfg in self.config.fallbacks:
+            v = self._try_one(fb_cfg, sentence, why, evidence, refs)
+            if v.holds is not None:
+                # Tag the verdict with which fallback answered
+                return Verdict(
+                    holds=v.holds, confidence=v.confidence, reason=v.reason,
+                    model=fb_cfg.model, base_url=fb_cfg.base_url,
+                )
+            last_error = v.error
+        # All endpoints failed
+        return Verdict(holds=None, error=last_error)
 
 
 def _user_prompt(sentence: str, why: str, evidence: str, max_chars: int, references: dict[str, str]) -> str:

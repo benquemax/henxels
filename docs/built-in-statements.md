@@ -121,10 +121,11 @@ together, and `changed_with` when one *follows* the other.
 
 - **`make_sure_that`** — a rule that's a plain sentence, judged by a language model against
   the staged changes in scope. `true` judges the henxel's own sentence (and `why:`); a
-  string or list judges those sentences instead. `@path` in a sentence hands that file
-  to the judge ("None of the words in @banned-words.md are used"). Diff-only, cached,
-  and it only *warns* when the judge is unsure or unreachable. Needs `settings.judge` (any OpenAI-compatible
-  endpoint). See [Natural-language henxels](natural-language-henxels.md).
+  string or list judges those sentences instead. A mapping with `text`/`sentences` and
+  `evidence: full` sends complete file contents for corpus-wide rules. `@path` in a
+  sentence hands that file to the judge ("None of the words in @banned-words.md are used").
+  Cached, and it only *warns* when the judge is unsure or unreachable. Needs `settings.judge`
+  (any OpenAI-compatible endpoint). See [Natural-language henxels](natural-language-henxels.md).
 
 ```yaml
   - henxel: "Behaviour changes are described in the docs"
