@@ -51,6 +51,7 @@ SETTINGS_NAMES = (
     "ask_me_before_staging",
     "confirm_before_push",
     "confirm_before_deleting",
+    "warn_about_deleting",
     "warn_about_similar_files",
     "warn_about_large_files",
     "judge",

@@ -46,8 +46,7 @@ def collect_deletions(root: Path | str, line_threshold: int) -> Deletions:
 
 
 def deletion_finding(deletions: Deletions) -> Finding:
-    details = [f"{f} — file deleted" for f in deletions.files]
-    details += [f"{p} — {n} lines removed" for p, n in deletions.lines]
+    details = _deletion_details(deletions)
     return Finding(
         level=BLOCK,
         henxel="Information loss is guarded — deletion should be deliberate",
@@ -56,6 +55,24 @@ def deletion_finding(deletions: Deletions) -> Finding:
         details=details,
         steer=f"{henxels_cmd()} bless delete   (then commit again)",
     )
+
+
+def deletion_warning(deletions: Deletions) -> Finding:
+    """The warn-only form (``warn_about_deleting``): same facts, no bless — the commit goes through."""
+    return Finding(
+        level=WARN,
+        henxel="Information loss is flagged — check these deletions are intended",
+        path="",
+        message="",
+        details=_deletion_details(deletions),
+        steer="if not: git restore --staged --worktree <file>   (or `git revert` once committed)",
+    )
+
+
+def _deletion_details(deletions: Deletions) -> list[str]:
+    details = [f"{f} — file deleted" for f in deletions.files]
+    details += [f"{p} — {n} lines removed" for p, n in deletions.lines]
+    return details
 
 
 def push_finding() -> Finding:

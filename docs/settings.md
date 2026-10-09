@@ -1,6 +1,6 @@
 ---
 title: Settings
-summary: The settings block holds behaviours — staging, push, and delete protections plus similarity and large-file warnings and the judge for natural-language rules — the parts of the contract that aren't tests.
+summary: The settings block holds behaviours — staging, push, and delete protections (or a warn-only delete check) plus similarity and large-file warnings and the judge for natural-language rules — the parts of the contract that aren't tests.
 ---
 
 # Settings
@@ -34,6 +34,15 @@ pre-push hook. See [Guards and bless](guards-and-bless.md).
 Blocks a commit that deletes files **or** removes more than `over_lines` net lines, until
 `henxels bless delete`. Small agents lose rows through diff-edit mistakes, so the loss has
 to be deliberate. Accepts `true` (default threshold) or `{ over_lines: N }`.
+
+## warn_about_deleting
+
+The warn-only twin of `confirm_before_deleting`: the same detection (deleted files and more
+than `over_lines` net lines removed from one file), the same forms (`true` or
+`{ over_lines: N }`), but the commit **goes through** with a loud warning listing what was
+lost — no bless step. Use it where agents commit on their own and a blocker would stall them,
+yet a slipped diff edit should still be noticed. If both are set, `confirm_before_deleting`
+wins and only the blocking finding is shown.
 
 ## warn_about_similar_files
 

@@ -38,6 +38,9 @@ With `confirm_before_deleting`, the pre-commit hook blocks a commit that loses i
 `henxels bless delete` mints a token bound to the exact set of staged deletions. Change the
 deletions and the token no longer matches, so you confirm what you actually meant to lose.
 
+(Want the notice without the block? `warn_about_deleting` takes the same forms and only
+warns — see [Settings](settings.md#warn_about_deleting).)
+
 ## Why a token, not a flag
 
 A token is single-use and bound to a fingerprint (the `HEAD` sha for push, the staged

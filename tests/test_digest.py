@@ -72,3 +72,9 @@ def test_check_file_detects_drift(tmp_path):
     drifted = Contract(settings=CONTRACT.settings,
                        henxels=CONTRACT.henxels + [Henxel(text="A new rule", locations=["./x"], statements={})])
     assert check_file(target, drifted) == "stale"
+
+
+def test_render_digest_mentions_the_delete_warning():
+    d = render_digest(Contract(settings={"warn_about_deleting": {"over_lines": 10}}))
+    assert "warns (never blocks) when a commit deletes files" in d
+    assert "blocked until `henxels bless delete`" not in d

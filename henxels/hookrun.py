@@ -17,7 +17,7 @@ from henxels.contract import ContractError, apply_imports, find_contract, load_c
 from henxels.diffinfo import staged_diff
 from henxels.engine import gitinfo
 from henxels.findings import Finding
-from henxels.guard import collect_deletions, deletion_finding, push_finding
+from henxels.guard import collect_deletions, deletion_finding, deletion_warning, push_finding
 from henxels.runner import run_contract, stage_commands
 
 
@@ -106,6 +106,13 @@ def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list
         deletions = collect_deletions(root, dp["over_lines"])
         if not deletions.empty and not bless.is_blessed(root, "delete", deletions.fingerprint(), now=now):
             findings.append(deletion_finding(deletions))
+    else:
+        # The warn-only twin: confirm_before_deleting wins when both are set (one finding, not two).
+        dw = settings.delete_warning(contract)
+        if dw:
+            warned = collect_deletions(root, dw["over_lines"])
+            if not warned.empty:
+                findings.append(deletion_warning(warned))
 
     # Run command gates only if nothing already blocks (fast feedback; don't burn a bless).
     if not any(f.is_block for f in findings):

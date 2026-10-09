@@ -3,6 +3,7 @@
 from tests.e2e.harness import output_of
 
 DELETE_GUARD = "settings:\n  confirm_before_deleting:\n    over_lines: 3\n"
+DELETE_WARNING = "settings:\n  warn_about_deleting:\n    over_lines: 3\n"
 PUSH_GUARD = "settings:\n  confirm_before_push: true\n"
 
 SIX_LINES = "one\ntwo\nthree\nfour\nfive\nsix\n"
@@ -28,6 +29,23 @@ def test_delete_guard_and_one_shot_bless(sandbox):
     reblocked = sandbox.commit_all(repo, "drop b")
     assert reblocked.returncode != 0
     assert "bless delete" in output_of(reblocked)
+
+
+def test_delete_warning_lets_the_commit_through_and_says_so(sandbox):
+    repo = sandbox.repo()
+    sandbox.write(repo, "henxels.yaml", DELETE_WARNING)
+    sandbox.write(repo, "a.txt", SIX_LINES)
+    sandbox.write(repo, "b.txt", SIX_LINES)
+    sandbox.henxels("init", cwd=repo)
+    assert sandbox.commit_all(repo, "seed").returncode == 0
+
+    (repo / "a.txt").unlink()
+    sandbox.write(repo, "b.txt", "one\n")
+    warned = sandbox.commit_all(repo, "drop a, gut b")
+    assert warned.returncode == 0
+    out = output_of(warned)
+    assert "Information loss is flagged" in out
+    assert "a.txt" in out and "b.txt" in out
 
 
 def test_push_guard_and_one_shot_bless(sandbox):

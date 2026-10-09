@@ -83,6 +83,9 @@ def _render_settings(contract: Contract) -> list[str]:
         out.append("- push is blocked until `henxels bless push`")
     if s.get("confirm_before_deleting"):
         out.append("- deleting files / removing many lines is blocked until `henxels bless delete`")
+    elif s.get("warn_about_deleting"):
+        out.append("- warns (never blocks) when a commit deletes files or removes many lines — "
+                   "read the warning and restore anything lost by mistake")
     if s.get("warn_about_similar_files"):
         out.append("- warns when a new file looks like a near-copy of a committed one")
     if s.get("judge"):

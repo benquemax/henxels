@@ -40,6 +40,17 @@
             }
           ]
         },
+        "warn_about_deleting": {
+          "description": "Warn (never block) when a commit deletes files or removes more than over_lines net lines — the warn-only twin of confirm_before_deleting, which wins when both are set.",
+          "oneOf": [
+            { "type": "boolean" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": { "over_lines": { "type": "integer", "minimum": 0 } }
+            }
+          ]
+        },
         "warn_about_similar_files": {
           "oneOf": [
             { "type": "boolean" },

@@ -46,3 +46,10 @@ def test_judge_forms(monkeypatch):
     assert settings.judge(Contract()) is None
     cfg = settings.judge(Contract(settings={"judge": {"base_url": "http://h:1/v1", "model": "m"}}))
     assert cfg.base_url == "http://h:1/v1" and cfg.model == "m" and cfg.api_key is None
+
+
+def test_delete_warning_forms():
+    assert settings.delete_warning(Contract()) is None
+    assert settings.delete_warning(Contract(settings={"warn_about_deleting": True})) == {"over_lines": 5}
+    got = settings.delete_warning(Contract(settings={"warn_about_deleting": {"over_lines": 10}}))
+    assert got == {"over_lines": 10}

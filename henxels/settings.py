@@ -35,6 +35,23 @@ def delete_protection(contract: Contract) -> dict | None:
     return None
 
 
+def delete_warning(contract: Contract) -> dict | None:
+    """Return {'over_lines': N} when deletions should be WARNED about (never blocked), else None.
+
+    The warn-only twin of ``confirm_before_deleting``: same detection, same threshold
+    forms, but the commit goes through. For repos where a blocker costs more than it saves
+    (agents that commit on their own) yet a loud note about lost lines is still wanted.
+    """
+    raw = contract.settings.get("warn_about_deleting")
+    if not raw:
+        return None
+    if raw is True:
+        return {"over_lines": DEFAULT_DELETE_LINES}
+    if isinstance(raw, dict):
+        return {"over_lines": int(raw.get("over_lines", DEFAULT_DELETE_LINES))}
+    return None
+
+
 def similarity(contract: Contract) -> dict | None:
     """Return {'above', 'ignore', 'at_most', 'budget'} when similarity warnings are on."""
     raw = contract.settings.get("warn_about_similar_files")
