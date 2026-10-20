@@ -54,7 +54,7 @@ def _excluded(rel: str, skip: set[str]) -> bool:
 def _git_files(root: Path) -> list[str] | None:
     try:
         result = subprocess.run(
-            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+            ["git", "-c", "core.quotepath=false", "ls-files", "--cached", "--others", "--exclude-standard"],
             capture_output=True,
             text=True,
             cwd=root,

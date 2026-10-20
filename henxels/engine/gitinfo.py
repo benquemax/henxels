@@ -21,11 +21,15 @@ def _run(args: list[str], root: Path | str) -> subprocess.CompletedProcess | Non
         return None
 
 
+def _diff_cached(args: list[str], root: Path | str) -> subprocess.CompletedProcess | None:
+    """`git diff --cached` with paths as the contract sees them: relative to the contract
+    root (not the git toplevel) and raw UTF-8 (git quotes non-ASCII paths by default)."""
+    return _run(["git", "-c", "core.quotepath=false", "diff", "--cached", "--relative", *args], root)
+
+
 def staged_files(root: Path | str) -> list[str]:
-    """Added/copied/modified files staged for commit (posix relative paths)."""
-    res = _run(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"], root
-    )
+    """Added/copied/modified/renamed (new path) files staged for commit (posix relative paths)."""
+    res = _diff_cached(["--name-only", "--diff-filter=ACMR"], root)
     if res is None or res.returncode != 0:
         return []
     return [line for line in res.stdout.splitlines() if line]
@@ -33,7 +37,7 @@ def staged_files(root: Path | str) -> list[str]:
 
 def staged_deletions(root: Path | str) -> list[str]:
     """Files deleted in the staged set."""
-    res = _run(["git", "diff", "--cached", "--name-only", "--diff-filter=D"], root)
+    res = _diff_cached(["--name-only", "--diff-filter=D"], root)
     if res is None or res.returncode != 0:
         return []
     return [line for line in res.stdout.splitlines() if line]
@@ -41,7 +45,7 @@ def staged_deletions(root: Path | str) -> list[str]:
 
 def staged_numstat(root: Path | str) -> list[tuple[int, int, str]]:
     """(added, removed, path) per staged file; binary files report 0/0."""
-    res = _run(["git", "diff", "--cached", "--numstat"], root)
+    res = _diff_cached(["--numstat"], root)
     out: list[tuple[int, int, str]] = []
     if res is None or res.returncode != 0:
         return out
@@ -57,7 +61,7 @@ def staged_numstat(root: Path | str) -> list[tuple[int, int, str]]:
 
 def staged_name_status(root: Path | str) -> list[tuple[str, str]]:
     """(status letter, path) per staged change: A/M/D (renames reported as M on the new path)."""
-    res = _run(["git", "diff", "--cached", "--name-status"], root)
+    res = _diff_cached(["--name-status"], root)
     out: list[tuple[str, str]] = []
     if res is None or res.returncode != 0:
         return out
@@ -82,7 +86,7 @@ def file_in_index(root: Path | str, rel: str) -> str | None:
 
 def tracked_files(root: Path | str) -> list[str]:
     """Files committed/tracked by git (the corpus similarity compares against)."""
-    res = _run(["git", "ls-files"], root)
+    res = _run(["git", "-c", "core.quotepath=false", "ls-files"], root)
     if res is None or res.returncode != 0:
         return []
     return [line for line in res.stdout.splitlines() if line]
