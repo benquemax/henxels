@@ -21,7 +21,7 @@ HEADLINE_KEYS = ("henxel", "rule", "must", "description")
 # Free-text reasoning/background for a henxel — not a test; it just rides into the
 # AGENTS.md digest (and `explain`) so agents read the *purpose* of the structure.
 CONTEXT_KEYS = ("why", "context", "comment")
-RESERVED = set(HEADLINE_KEYS) | set(CONTEXT_KEYS) | {"in", "level", "except"}
+RESERVED = set(HEADLINE_KEYS) | set(CONTEXT_KEYS) | {"in", "level", "except", "only_touched"}
 
 
 DEFAULT_FILENAMES = ("henxels.yaml", ".henxels.yaml", "henxels.yml", ".henxels.yml")
@@ -55,6 +55,7 @@ class Henxel:
     locations: list[str] = field(default_factory=lambda: ["./*"])  # raw `in:` specs
     excludes: list[str] = field(default_factory=list)  # raw `except:` specs carved out of scope
     level: str = "block"  # block | warn
+    only_touched: bool = False  # at commit time, apply only to files the commit touches
     why: str = ""  # free-text reasoning/background (surfaced in the digest + explain)
     statements: dict = field(default_factory=dict)  # {name: params}, excludes reserved keys
 
@@ -99,7 +100,10 @@ def _to_henxel(item: dict) -> Henxel:
     excludes = _norm_excludes(item.get("except"))
     level = "warn" if str(item.get("level", "")).lower() == "warn" else "block"
     statements = {k: v for k, v in item.items() if k not in RESERVED}
-    return Henxel(text=text, locations=locations, excludes=excludes, level=level, why=why, statements=statements)
+    return Henxel(
+        text=text, locations=locations, excludes=excludes, level=level,
+        only_touched=item.get("only_touched") is True, why=why, statements=statements,
+    )
 
 
 def _norm_locations(value) -> list[str]:

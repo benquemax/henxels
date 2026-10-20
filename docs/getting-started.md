@@ -41,7 +41,8 @@ Templates ride on top of the detected starter. `okf-llm-wiki` sets up an
   them.
 - **Existing wiki** — governs it without touching its content. The wiki rules start at
   `level: warn`, so the findings are a migration plan, not blocked commits; when
-  `henxels check` runs clean, delete the `level: warn` lines to enforce.
+  `henxels check` runs clean, delete the `level: warn` lines to enforce. To migrate gradually instead, add
+  `only_touched: true` so a commit is held only to the files it touches.
 
 The wiki lives at `_wiki/` by default (an existing `wiki/` is adopted); say
 `--wiki-dir pages` to govern another folder.

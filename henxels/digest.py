@@ -25,6 +25,11 @@ def render_digest(contract: Contract) -> str:
         "that is the only sanctioned escape. Run `henxels explain <path>` before creating",
         "a file to see what governs that spot.",
         "",
+        *(
+            ["A rule tagged _(on touch)_ is checked at commit only against the files the commit "
+             "stages; `henxels check --all` still checks every file it covers.", ""]
+            if any(h.only_touched for h in contract.henxels) else []
+        ),
         "Only use `git commit --no-verify` in a genuine emergency: it bypasses the hooks that "
         "run this contract, the safety mechanism meant to protect the repository. Prefer "
         "`henxels bless <action>` or editing `henxels.yaml` — both keep the deviation visible.",
@@ -48,7 +53,7 @@ def render_digest(contract: Contract) -> str:
         "",
     ]
     for hx in contract.henxels:
-        tag = " _(warn)_" if hx.level == "warn" else ""
+        tag = (" _(warn)_" if hx.level == "warn" else "") + (" _(on touch)_" if hx.only_touched else "")
         where = "" if hx.locations in ([], ["./*"]) else f" (in {', '.join(hx.locations)})"
         lines.append(f"- {hx.text}{where}{tag}")
         if hx.why:

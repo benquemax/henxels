@@ -20,7 +20,7 @@ def explain_path(contract: Contract, rel_path: str) -> str:
         return "\n".join(lines)
 
     for hx in matched:
-        tag = " [warn]" if hx.level == "warn" else ""
+        tag = (" [warn]" if hx.level == "warn" else "") + (" [on touch]" if hx.only_touched else "")
         lines.append(f"  • {hx.text}{tag}")
         if hx.why:
             lines.append(f"      ↳ {' '.join(hx.why.split())}")

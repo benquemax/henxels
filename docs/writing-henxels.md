@@ -37,9 +37,13 @@ Paths are anchored at the repo root, and recursion is explicit via a trailing `*
 
 ## Level and reasoning
 
-A henxel can carry two more optional keys:
+A henxel can carry three more optional keys:
 
 - `level: warn` — surface the henxel but never block (default is `block`).
+- `only_touched: true` — at commit time, per-file statements check only the files the
+  commit stages (checks on the folder itself, like `required_files` and `max_files`, still see the whole folder);
+  `henxels check --all` checks everything. For a rule the repo doesn't meet yet; ratchet:
+  once `check --all` is clean, drop `only_touched` (and `level: warn`) to enforce everywhere.
 - `why:` (aliases `context:` / `comment:`) — free-text background that rides into
   `AGENTS.md`, so the agent reads *why* the rule exists and how to use what it governs.
   It is not a test.

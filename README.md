@@ -185,6 +185,24 @@ only what you need. Return `None`/`True` to pass, or a string instruction to fai
 
 ## Tips & tricks
 
+### Walk toward a rule the repo doesn't meet yet
+
+`only_touched: true` applies a henxel only to files a commit touches, so new and edited
+files must comply while the backlog stays visible in `henxels check --all`. It narrows per-file
+checks (casing, frontmatter, links, …) to touched files; checks on the folder itself
+(`required_files`, `only_these_subfolders`, `max_files`, …) always see the whole folder. A
+cross-file break in an untouched page (a link to a deleted file) waits for `check --all`.
+
+```yaml
+  - henxel: "Notes are kebab-case"
+    in: ./notes
+    filename_casing: kebab-case
+    level: warn
+    only_touched: true
+```
+
+Ratchet: once `henxels check --all` is clean, drop `only_touched` (and `level: warn`) so it blocks everywhere.
+
 ### Explain the *why*, not just the rule
 
 A henxel's sentence says **how** the structure must be; a **`why:`** (aliases `context:` /
@@ -262,7 +280,7 @@ The README is the tour; the deeper guides live in
 [`docs/`](https://github.com/benquemax/henxels/tree/main/docs):
 
 - [Getting started](https://github.com/benquemax/henxels/blob/main/docs/getting-started.md) — install, init, validate.
-- [Writing henxels](https://github.com/benquemax/henxels/blob/main/docs/writing-henxels.md) — the contract: `in:`, `except:`, `level:`, `why:`.
+- [Writing henxels](https://github.com/benquemax/henxels/blob/main/docs/writing-henxels.md) — the contract: `in:`, `except:`, `level:`, `only_touched:`, `why:`.
 - [Built-in statements](https://github.com/benquemax/henxels/blob/main/docs/built-in-statements.md) — the standard library.
 - [Natural-language henxels](https://github.com/benquemax/henxels/blob/main/docs/natural-language-henxels.md) — rules as sentences, judged by a language model (`make_sure_that`).
 - [Custom checks](https://github.com/benquemax/henxels/blob/main/docs/custom-checks.md) — write your own statements.

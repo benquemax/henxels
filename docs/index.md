@@ -13,7 +13,7 @@ keep agents and humans true to your repo's structure. These guides go deeper tha
 
 - [Getting started](getting-started.md) — install, initialize, validate.
 - [Writing henxels](writing-henxels.md) — the contract: a henxel, `in:`, `except:`,
-  `level:`, and `why:`.
+  `level:`, `only_touched:`, and `why:`.
 - [Built-in statements](built-in-statements.md) — the standard library, by category.
 - [Natural-language henxels](natural-language-henxels.md) — rules written as sentences and
   judged by a language model (`make_sure_that` + the `judge` setting).

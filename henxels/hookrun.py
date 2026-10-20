@@ -83,7 +83,9 @@ def run_precommit(root: Path | str, now: float | None = None) -> tuple[int, list
     if contract is None:
         return 0, []
 
-    findings: list[Finding] = run_contract(contract, root, diff=staged_diff(root))
+    findings: list[Finding] = run_contract(
+        contract, root, diff=staged_diff(root), touched=gitinfo.staged_files(root)
+    )
 
     findings.extend(_digest_drift(contract, root))
     findings.extend(_schema_drift(root))

@@ -8,6 +8,7 @@ per-file instructions. Command-gate statements are skipped here (the hooks run t
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from henxels.contract import Contract
@@ -17,9 +18,16 @@ from henxels.statements.registry import StatementDef, get_statement
 from henxels.statements.scope import Scope, build_scope
 from henxels.version_check import requirement_unmet
 
+# ponytail: hand-kept list; promote to a StatementDef flag if custom statements need it.
+FOLDER_LEVEL = {"max_files"}
+
 
 def run_contract(
-    contract: Contract, root: Path | str, files: list[str] | None = None, diff=None
+    contract: Contract,
+    root: Path | str,
+    files: list[str] | None = None,
+    diff=None,
+    touched: list[str] | None = None,
 ) -> list[Finding]:
     root = Path(root)
 
@@ -40,9 +48,17 @@ def run_contract(
 
     all_files = files if files is not None else discover(root)
 
+    touched_set = set(touched) if touched is not None else None
     findings: list[Finding] = []
     for hx in contract.henxels:
         scope = build_scope(hx.locations, all_files, root, contract.settings, hx.excludes)
+        # only_touched narrows file-checking statements to the touched files. Folder-level
+        # statements see the full scope: most read the filesystem via scope.locations (so
+        # are unaffected), but FOLDER_LEVEL ones tally scope.files and must not see a subset.
+        # (StatementDef.per_file can't be the split: filename_casing etc. loop scope.files too.)
+        touched_scope = scope
+        if hx.only_touched and touched_set is not None:
+            touched_scope = replace(scope, files=[f for f in scope.files if f in touched_set])
         instructions: list[str] = []
         for name, param in hx.statements.items():
             sdef = get_statement(name)
@@ -55,7 +71,8 @@ def run_contract(
                 continue
             if sdef.stage is not None:
                 continue  # command gate; runs in the hooks
-            instructions.extend(_invoke(sdef, param, scope, hx.text, diff, henxel=hx))
+            stmt_scope = scope if name in FOLDER_LEVEL else touched_scope
+            instructions.extend(_invoke(sdef, param, stmt_scope, hx.text, diff, henxel=hx))
 
         if instructions:
             # A henxel whose every instruction is advisory (an unsure or unreachable
