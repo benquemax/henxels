@@ -518,6 +518,27 @@ def test_no_secrets_clean(tmp_path):
     assert run("no_secrets", True, s) == []
 
 
+def test_no_secrets_flags_google_api_key(tmp_path):
+    s = scope_for(tmp_path, {"a.ts": "apiKey: 'AIzaSy" + "A" * 33 + "'\n"})
+    assert run("no_secrets", True, s)
+
+
+def test_no_secrets_ignores_placeholders(tmp_path):
+    s = scope_for(tmp_path, {"a.md": 'TOKEN="<paste-token-from-/mcp>"\nTOKEN="eyJhbGci..."\nkey = "${API_KEY}"\n'})
+    assert run("no_secrets", True, s) == []
+
+
+def test_no_secrets_extra_patterns(tmp_path):
+    s = scope_for(tmp_path, {"a.ts": "const t = 'sai_oat_abcdefghijklmnopqrstuvwxyz'\n"})
+    assert run("no_secrets", True, s) == []
+    assert run("no_secrets", [r"\bsai_oat_[A-Za-z0-9]{20,}"], s)
+
+
+def test_no_secrets_extra_patterns_keep_builtins(tmp_path):
+    s = scope_for(tmp_path, {"a.md": "-----BEGIN RSA PRIVATE KEY-----\n"})
+    assert run("no_secrets", [r"nomatch"], s)
+
+
 # --- must_not_exist ------------------------------------------------------
 
 def test_must_not_exist_when_present(tmp_path):

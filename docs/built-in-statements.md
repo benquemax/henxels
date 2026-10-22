@@ -75,8 +75,15 @@ These suit a wiki or any cross-linked markdown:
 
 ## Secrets
 
-- **`no_secrets`** — files contain no credentials (private keys, API tokens, passwords). It
-  is conservative on purpose; narrow the scope with `except:` to allow a sanctioned vault.
+- **`no_secrets`** — files contain no credentials (private keys, API tokens, passwords,
+  Google API keys). It is conservative on purpose; narrow the scope with `except:` to allow
+  a sanctioned vault. Quoted values with placeholder marks (`<…>`, `${…}`, a trailing
+  `...`) are doc examples and pass. A repo with its own token shape passes a list of
+  regexes instead of `true`; the built-ins still apply:
+
+  ```yaml
+  no_secrets: ['\bsai_oat_[A-Za-z0-9]{20,}']
+  ```
 
 ## Change (diff-aware)
 
