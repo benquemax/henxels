@@ -528,6 +528,17 @@ def test_no_secrets_ignores_placeholders(tmp_path):
     assert run("no_secrets", True, s) == []
 
 
+def test_no_secrets_ignores_css_variable_names(tmp_path):
+    # A design token prop like token="--chart-1" names a CSS custom property, not a secret.
+    s = scope_for(tmp_path, {"a.tsx": '<Bar token="--chart-1" />\nsecret: \'--brand-accent\'\n'})
+    assert run("no_secrets", True, s) == []
+
+
+def test_no_secrets_still_flags_dashes_inside_a_value(tmp_path):
+    s = scope_for(tmp_path, {"a.md": 'token = "hunter2--hunter2"\n'})
+    assert run("no_secrets", True, s)
+
+
 def test_no_secrets_extra_patterns(tmp_path):
     s = scope_for(tmp_path, {"a.ts": "const t = 'sai_oat_abcdefghijklmnopqrstuvwxyz'\n"})
     assert run("no_secrets", True, s) == []

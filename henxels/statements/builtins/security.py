@@ -22,10 +22,12 @@ _SECRET_PATTERNS = [
     (
         "hardcoded credential",
         # A quoted value with placeholder marks (<…>, ${…}, {…}, a trailing "...") is a
-        # doc example, not a credential — docs are full of TOKEN="<paste here>".
+        # doc example, not a credential — docs are full of TOKEN="<paste here>". A value
+        # starting with "--" names a CSS custom property (a design token="--chart-1"
+        # prop) or a CLI flag; no key or token format begins that way.
         re.compile(
             r"""(?i)\b(?:api[_-]?key|secret|token|password|passwd)\b\s*[:=]\s*"""
-            r"""['"](?![^'"\s]*(?:[<>{}$]|\.\.\.))[^'"\s]{8,}['"]"""
+            r"""['"](?!--)(?![^'"\s]*(?:[<>{}$]|\.\.\.))[^'"\s]{8,}['"]"""
         ),
     ),
 ]
