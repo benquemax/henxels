@@ -83,7 +83,7 @@
               "properties": {
                 "kind": { "type": "string", "enum": ["openai", "systemone"], "description": "`openai` (default): a chat endpoint asked for a JSON verdict. `systemone`: a decision model (Ollama >= 0.35, TypeSafe, AWS, Upstage) asked one yes/no question on POST {base_url}/v1/systemone — calibrated confidence, no reason. Changes the base_url/model defaults to http://localhost:11434 and nimble." },
                 "base_url": { "type": "string", "description": "Endpoint root: ending in /v1 for `openai` (default http://localhost:11434/v1), the server root for `systemone` (default http://localhost:11434)." },
-                "model": { "type": "string", "description": "Model id as the endpoint knows it (default qwen3:8b)." },
+                "model": { "type": "string", "description": "Model id as the endpoint knows it (default qwen3:8b; nimble for `systemone`)." },
                 "api_key_env": { "type": "string", "description": "Environment variable holding the API key (default OPENAI_API_KEY). Unset or empty = no Authorization header." },
                 "timeout": { "type": "number", "minimum": 1, "description": "Seconds to wait per verdict before failing open (default 60)." },
                 "max_chars": { "type": "integer", "minimum": 1000, "description": "Evidence (diff) budget per verdict; longer diffs are truncated (default 60000)." },

@@ -560,3 +560,10 @@ def test_must_not_exist_when_present(tmp_path):
 def test_must_not_exist_when_absent(tmp_path):
     s = scope_for(tmp_path, {"src/a.py": "x"}, locations=["legacy"])
     assert run("must_not_exist", True, s) == []
+
+
+def test_no_secrets_still_flags_a_password_that_starts_with_dashes(tmp_path):
+    # Only a whole lowercase-kebab name (--chart-1, --dry-run) is a CSS variable or flag;
+    # a generated password that happens to start with "--" is still a credential.
+    s = scope_for(tmp_path, {"a.ts": 'password="--q4JZs2wL9N"\n'})
+    assert run("no_secrets", True, s)

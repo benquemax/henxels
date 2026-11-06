@@ -23,11 +23,15 @@ _SECRET_PATTERNS = [
         "hardcoded credential",
         # A quoted value with placeholder marks (<…>, ${…}, {…}, a trailing "...") is a
         # doc example, not a credential — docs are full of TOKEN="<paste here>". A value
-        # starting with "--" names a CSS custom property (a design token="--chart-1"
-        # prop) or a CLI flag; no key or token format begins that way.
+        # that is wholly a lowercase-kebab "--name" is a CSS custom property (a design
+        # token="--chart-1" prop) or a CLI flag. Case-sensitive on purpose (`(?-i:`):
+        # a mixed-case "--q4JZs2wL9N" is a generated password and still flagged.
+        # ponytail: an all-lowercase password like "--hunter-two" slips through; tighten
+        # to a known-variable list if that ever matters.
         re.compile(
             r"""(?i)\b(?:api[_-]?key|secret|token|password|passwd)\b\s*[:=]\s*"""
-            r"""['"](?!--)(?![^'"\s]*(?:[<>{}$]|\.\.\.))[^'"\s]{8,}['"]"""
+            r"""['"](?!(?-i:--[a-z0-9]+(?:-[a-z0-9]+)*)['"])"""
+            r"""(?![^'"\s]*(?:[<>{}$]|\.\.\.))[^'"\s]{8,}['"]"""
         ),
     ),
 ]
