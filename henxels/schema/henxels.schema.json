@@ -74,14 +74,15 @@
           ]
         },
         "judge": {
-          "description": "The language model that judges natural-language henxels (make_sure_that). Any OpenAI-compatible chat endpoint — local (Ollama, llama.cpp, vLLM, LM Studio) or remote — with or without an API key. `true` = Ollama defaults (http://localhost:11434/v1, qwen3:8b). The key is never in the YAML: name the env var that holds it.",
+          "description": "The language model that judges natural-language henxels (make_sure_that). Any OpenAI-compatible chat endpoint or System One decision model (`kind: systemone`) — local (Ollama, llama.cpp, vLLM, LM Studio) or remote — with or without an API key. `true` = Ollama defaults (http://localhost:11434/v1, qwen3:8b). The key is never in the YAML: name the env var that holds it.",
           "oneOf": [
             { "type": "boolean" },
             {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "base_url": { "type": "string", "description": "Endpoint root ending in /v1 (default http://localhost:11434/v1)." },
+                "kind": { "type": "string", "enum": ["openai", "systemone"], "description": "`openai` (default): a chat endpoint asked for a JSON verdict. `systemone`: a decision model (Ollama >= 0.35, TypeSafe, AWS, Upstage) asked one yes/no question on POST {base_url}/v1/systemone — calibrated confidence, no reason. Changes the base_url/model defaults to http://localhost:11434 and nimble." },
+                "base_url": { "type": "string", "description": "Endpoint root: ending in /v1 for `openai` (default http://localhost:11434/v1), the server root for `systemone` (default http://localhost:11434)." },
                 "model": { "type": "string", "description": "Model id as the endpoint knows it (default qwen3:8b)." },
                 "api_key_env": { "type": "string", "description": "Environment variable holding the API key (default OPENAI_API_KEY). Unset or empty = no Authorization header." },
                 "timeout": { "type": "number", "minimum": 1, "description": "Seconds to wait per verdict before failing open (default 60)." },
@@ -91,12 +92,13 @@
                 "warn_above": { "type": "number", "minimum": 0, "maximum": 1, "description": "Failures below this confidence are dropped entirely (default 0)." },
                 "fallbacks": {
                   "type": "array",
-                  "description": "Backup judge endpoints tried in order when the primary fails (transport error, bad response). Each entry supports base_url, model, api_key_env, timeout, max_chars, extra_body. A real verdict from any endpoint stops the chain — only infrastructure failures trigger fallback.",
+                  "description": "Backup judge endpoints tried in order when the primary fails (transport error, bad response). Each entry supports kind, base_url, model, api_key_env, timeout, max_chars, extra_body. A real verdict from any endpoint stops the chain — only infrastructure failures trigger fallback.",
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
-                      "base_url": { "type": "string", "description": "Endpoint root ending in /v1." },
+                      "kind": { "type": "string", "enum": ["openai", "systemone"], "description": "`openai` (default) or `systemone`, as for the primary judge." },
+                      "base_url": { "type": "string", "description": "Endpoint root (ending in /v1 for `openai`)." },
                       "model": { "type": "string", "description": "Model id as the endpoint knows it." },
                       "api_key_env": { "type": "string", "description": "Environment variable holding the API key." },
                       "timeout": { "type": "number", "minimum": 1, "description": "Seconds to wait per verdict before failing open (default 60)." },

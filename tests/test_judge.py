@@ -376,3 +376,98 @@ def test_judge_without_fallbacks_works_as_before():
     v = j.judge("s", "", "e")
     assert v.holds is True
     assert v.model is None  # no fallback used → model stays None
+
+
+# --- System One decision models -------------------------------------------
+# A decision model (Ollama >= 0.35, TypeSafe, AWS, Upstage…) can't chat: it answers
+# named questions about a `state` with probabilities, on POST {root}/v1/systemone.
+
+
+def _s1(p_yes):
+    return {"model": "nimble", "answers": {"holds": {"type": "noul", "noul": p_yes}}, "usage": {}}
+
+
+def test_config_systemone_defaults_to_local_ollama_root():
+    cfg = config_from_settings({"judge": {"kind": "systemone"}})
+    assert cfg.kind == "systemone"
+    assert cfg.base_url == "http://localhost:11434"  # the server root, not /v1
+    assert cfg.model == judge_mod.DEFAULT_SYSTEMONE_MODEL
+
+
+def test_config_kind_defaults_to_openai():
+    assert config_from_settings({"judge": True}).kind == "openai"
+
+
+def test_env_overrides_the_kind(monkeypatch):
+    """Which model answers is a fact about a machine; its kind travels with it."""
+    monkeypatch.setenv("HENXELS_JUDGE_KIND", "systemone")
+    assert config_from_settings({"judge": True}).kind == "systemone"
+
+
+def test_systemone_judge_asks_one_yes_no_question():
+    t = FakeTransport(reply=_s1(0.97))
+    v = OpenAICompatibleJudge(_cfg(kind="systemone", base_url="http://box:11434"), transport=t).judge(
+        "Docs are updated", "because", "diff --git a/x"
+    )
+    assert v.holds is True and v.confidence == pytest.approx(0.97)
+    url, headers, body, _ = t.calls[0]
+    assert url == "http://box:11434/v1/systemone"
+    assert headers["Authorization"] == "Bearer k"
+    assert body["model"] == "m"
+    assert body["questions"]["holds"]["type"] == "noul"
+    assert "Docs are updated" in body["state"] and "because" in body["state"] and "diff --git a/x" in body["state"]
+
+
+def test_systemone_no_is_a_failure_with_the_no_probability_as_confidence():
+    t = FakeTransport(reply=_s1(0.1))
+    v = OpenAICompatibleJudge(_cfg(kind="systemone"), transport=t).judge("s", "", "e")
+    assert v.holds is False and v.confidence == pytest.approx(0.9)
+
+
+def test_systemone_refusal_fails_open():
+    t = FakeTransport(reply={"error": 'model "qwen3:8b" is not a llama.cpp decision model'})
+    v = OpenAICompatibleJudge(_cfg(kind="systemone"), transport=t).judge("s", "", "e")
+    assert v.holds is None and "not a llama.cpp decision model" in v.error
+
+
+def test_systemone_without_an_answer_fails_open():
+    t = FakeTransport(reply={"answers": {}})
+    v = OpenAICompatibleJudge(_cfg(kind="systemone"), transport=t).judge("s", "", "e")
+    assert v.holds is None and v.error
+
+
+def test_fallback_can_switch_kind():
+    """A local decision model first, a hosted chat model when it is down."""
+    primary_t = FakeTransport(exc=OSError("connection refused"))
+    backup_t = FakeTransport(reply=_resp('{"holds": true, "reason": "from chat"}'))
+    cfg = _cfg(kind="systemone", base_url="http://local:11434",
+               fallbacks=(_cfg(base_url="http://cloud/v1", model="gpt"),))
+    j = OpenAICompatibleJudge(cfg, transport=primary_t)
+    j._transports = {cfg.base_url: primary_t, "http://cloud/v1": backup_t}
+    v = j.judge("s", "", "e")
+    assert v.holds is True and v.model == "gpt"
+    assert backup_t.calls[0][0] == "http://cloud/v1/chat/completions"
+
+
+def test_config_parses_a_fallbacks_kind():
+    cfg = config_from_settings({"judge": {"fallbacks": [{"kind": "systemone", "model": "nimble"}]}})
+    assert cfg.fallbacks[0].kind == "systemone"
+    assert cfg.fallbacks[0].base_url == "http://localhost:11434"
+
+
+def test_unknown_kind_fails_open():
+    v = OpenAICompatibleJudge(_cfg(kind="telepathy"), transport=FakeTransport(reply={})).judge("s", "", "e")
+    assert v.holds is None and "telepathy" in v.error
+
+
+def test_systemone_tolerates_a_v1_base_url():
+    """HENXELS_JUDGE_URL=http://box:11434/v1 left over from a chat judge still works."""
+    t = FakeTransport(reply=_s1(0.9))
+    OpenAICompatibleJudge(_cfg(kind="systemone", base_url="http://box:11434/v1"), transport=t).judge("s", "", "e")
+    assert t.calls[0][0] == "http://box:11434/v1/systemone"
+
+
+@pytest.mark.parametrize("p_yes", [True, 1.5, -0.1, "0.9", None, float("nan")])
+def test_systemone_rejects_a_probability_that_is_not_one(p_yes):
+    v = judge_mod.parse_systemone({"answers": {"holds": {"type": "noul", "noul": p_yes}}})
+    assert v.holds is None and v.error

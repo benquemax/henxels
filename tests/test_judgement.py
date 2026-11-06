@@ -566,3 +566,21 @@ def test_chunked_judging_caches_per_chunk(fake, tmp_path):
     assert first_calls > 1
     make_sure_that(*args)
     assert len(j.calls) == first_calls  # all cached, no new calls
+
+
+def test_a_reasonless_failure_does_not_say_it_twice():
+    """A decision model (kind: systemone) gives a probability but never a reason."""
+    text = judgement._to_instruction("Docs are updated", Verdict(holds=False, confidence=0.9), 0.8, 0.0)
+    assert text == "the judge is 90% sure this does not hold: Docs are updated"
+
+
+def test_switching_the_judge_kind_asks_again(tmp_path):
+    """Same model and endpoint, different kind: a chat verdict must not answer for a decision model."""
+    from henxels.judge import JudgeConfig
+
+    r = _repo(tmp_path)
+    j = FakeJudge(Verdict(holds=True), Verdict(holds=False, confidence=0.9))
+    args = (r, "s", "", "evidence", {})
+    judgement._judge_cached(j, JudgeConfig(kind="openai", model="m"), *args)
+    v = judgement._judge_cached(j, JudgeConfig(kind="systemone", model="m"), *args)
+    assert len(j.calls) == 2 and v.holds is False

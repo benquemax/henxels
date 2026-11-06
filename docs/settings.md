@@ -90,7 +90,8 @@ skips globs. It warns, never blocks.
 
 The language model that judges [natural-language henxels](natural-language-henxels.md)
 (`make_sure_that`). Any OpenAI-compatible chat endpoint — local (Ollama, llama.cpp, vLLM,
-LM Studio) or hosted — with or without a key:
+LM Studio) or hosted — with or without a key, or a System One decision model
+(`kind: systemone`, see the [guide](natural-language-henxels.md#decision-models-kind-systemone)):
 
 ```yaml
 settings:
@@ -116,6 +117,7 @@ contract says *that* there is a judge; the machine says *where*, through the env
 
 | Variable                    | Overrides    |
 |-----------------------------|--------------|
+| `HENXELS_JUDGE_KIND`        | `kind`       |
 | `HENXELS_JUDGE_URL`         | `base_url`   |
 | `HENXELS_JUDGE_MODEL`       | `model`      |
 | `HENXELS_JUDGE_TIMEOUT`     | `timeout`    |
@@ -132,7 +134,7 @@ key table and the confidence rules are in the [guide](natural-language-henxels.m
 **Fallback judges.** When the primary endpoint fails (transport error, HTTP error, bad
 response), each entry in `fallbacks:` is tried in order. Only infrastructure failures
 trigger fallback — a real verdict from the primary stops the chain. Each fallback supports
-`base_url`, `model`, `api_key_env`, `timeout`, `max_chars`, and `extra_body`; policy
+`kind`, `base_url`, `model`, `api_key_env`, `timeout`, `max_chars`, and `extra_body`; policy
 settings (`block_above`, `warn_above`) are shared. See the
 [guide](natural-language-henxels.md#fallback-judges) for details.
 

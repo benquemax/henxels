@@ -80,8 +80,9 @@ Henxels sends one `POST {base_url}/chat/completions` with the standard library o
 
 | key            | default                      | meaning                                                                  |
 | -------------- | ---------------------------- | ------------------------------------------------------------------------ |
-| `base_url`     | `http://localhost:11434/v1`  | endpoint root ending in `/v1` (Ollama's default)                          |
-| `model`        | `qwen3:8b`                   | model id as the endpoint knows it                                        |
+| `kind`         | `openai`                     | `openai` (a chat model) or `systemone` (a [decision model](#decision-models-kind-systemone)) |
+| `base_url`     | `http://localhost:11434/v1`  | endpoint root ending in `/v1` (Ollama's default); for `systemone` the server root, default `http://localhost:11434` |
+| `model`        | `qwen3:8b`                   | model id as the endpoint knows it; for `systemone` the default is `nimble` |
 | `api_key_env`  | `OPENAI_API_KEY`             | env var holding the key — the key itself never goes in the YAML          |
 | `timeout`      | `60`                         | seconds per verdict before failing open                                  |
 | `max_chars`    | `60000`                      | diff budget per verdict; longer diffs are truncated with a note          |
@@ -91,7 +92,7 @@ Henxels sends one `POST {base_url}/chat/completions` with the standard library o
 
 `judge: true` takes every default (a local Ollama).
 
-Every "where" key has an environment override — `HENXELS_JUDGE_URL`, `_MODEL`, `_TIMEOUT`,
+Every "where" key has an environment override — `HENXELS_JUDGE_KIND`, `_URL`, `_MODEL`, `_TIMEOUT`,
 `_EXTRA_BODY` (JSON) — that wins over the contract, so a LAN hostname or a model id never
 has to be committed; see [settings](settings.md#judge). The contract decides *that* there
 is a judge, the machine decides *where*.
@@ -99,6 +100,49 @@ is a judge, the machine decides *where*.
 > **Your diff leaves the machine** if `base_url` points at a remote service. A staged diff
 > can contain secrets and unreleased work. Prefer a local endpoint; if you use a hosted
 > one, that's a conscious decision the committed `henxels.yaml` makes visible.
+
+### Decision models (`kind: systemone`)
+
+A *decision model* doesn't chat: it reads a text and answers named questions with
+probabilities. Ollama (0.35+) serves them on the **System One** API, and hosted providers
+(TypeSafe, AWS, Upstage) speak the same wire format. With `kind: systemone` the statement
+becomes one yes/no question, sent as `POST {base_url}/v1/systemone`:
+
+```yaml
+settings:
+  judge:
+    kind: systemone
+    model: nimble                 # any decision model: `ollama pull nimble`
+    # base_url: http://localhost:11434   (the server root — default; a trailing /v1 is tolerated)
+    # api_key_env: TYPESAFE_API_KEY      (hosted providers; sent as a Bearer token)
+```
+
+The answer is P(yes), so every verdict carries a **calibrated confidence** without any
+logprobs support — `block_above` works out of the box. The trade-off: a decision model
+gives **no reason**, so a failure says only how sure it is
+("the judge is 93% sure this does not hold: …"), not what to change. A model that can't
+answer System One (a chat model, say) is refused by the server and fails open like any
+other outage — which is what a `fallbacks:` entry of the other kind is for:
+
+```yaml
+    fallbacks:
+      - kind: openai
+        base_url: https://api.openai.com/v1
+        model: gpt-4o-mini
+```
+
+Decision models only read, never write, so they are fast where it matters for a gate:
+the whole diff is one forward pass. They still have a context window — keep `max_chars`
+within it: the default 60,000 characters is about 15k tokens, so lower `max_chars` for a
+model with a smaller window. A local model's first call of the day also pays for loading
+it (a minute or more for a large one), so raise `timeout` above the default 60 seconds, or a
+cold start only warns "could not be judged".
+
+They also don't reason before answering, so they are **less reliable than a chat judge on
+rules that need inference** from a diff. In our live runs a 27B decision model blocked an
+undocumented CLI flag, but let through modules whose diffs showed no docstring (it
+answered "holds" at 64%). Use them for rules the diff shows plainly, keep `block_above`
+at its default so a coin-flip answer only warns, and prefer a chat judge for subtle ones.
 
 ### Fallback judges
 
@@ -119,7 +163,7 @@ settings:
         api_key_env: OPENROUTER_API_KEY
 ```
 
-Each fallback entry supports `base_url`, `model`, `api_key_env`, `timeout`, `max_chars`,
+Each fallback entry supports `kind`, `base_url`, `model`, `api_key_env`, `timeout`, `max_chars`,
 and `extra_body`. Policy settings (`block_above`, `warn_above`) stay on the primary — they
 govern what to do with a verdict, not how to reach the judge.
 
@@ -229,5 +273,5 @@ judge a commit; a warm local model is often the better trade.
 - **Not the only escape hatch.** Editing the contract still is. A judge's verdict is a
   test result, not a policy.
 - **Not tied to one vendor.** The judge is a small interface (sentence + evidence →
-  holds/confidence/reason). Today it's implemented over the OpenAI chat shape; a model that
-  returns calibrated decisions directly could slot in later without a contract change.
+  holds/confidence/reason), implemented over the OpenAI chat shape and the System One
+  decision API; another backend slots in as another `kind` without a contract change.

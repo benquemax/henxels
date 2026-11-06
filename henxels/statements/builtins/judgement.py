@@ -270,13 +270,13 @@ def _to_instruction(sentence: str, v: Verdict, block_above: float, warn_above: f
         return Advisory(f"'{sentence}' could not be judged — {detail} (commit allowed; verify by hand)")
     if v.holds:
         return None
-    reason = v.reason or "the judge says this does not hold"
+    reason = f"{v.reason} — " if v.reason else ""  # decision models (kind: systemone) never give one
     if v.confidence is None:
-        return f"{reason} — the judge finds this does not hold: {sentence}"
+        return f"{reason}the judge finds this does not hold: {sentence}"
     pct = f"{round(v.confidence * 100)}%"
     if v.confidence < warn_above:
         return None
-    text = f"{reason} — the judge is {pct} sure this does not hold: {sentence}"
+    text = f"{reason}the judge is {pct} sure this does not hold: {sentence}"
     return text if v.confidence >= block_above else Advisory(text)
 
 
@@ -288,7 +288,7 @@ def _judge_cached(
 ) -> Verdict:
     # The referenced files are part of the question: edit the list, get a fresh verdict.
     key = hashlib.sha256(
-        json.dumps([cfg.model, cfg.base_url, sentence, why, evidence, references], sort_keys=True).encode()
+        json.dumps([cfg.kind, cfg.model, cfg.base_url, sentence, why, evidence, references], sort_keys=True).encode()
     ).hexdigest()
     cache = _load_cache(root)
     hit = cache.get(key)

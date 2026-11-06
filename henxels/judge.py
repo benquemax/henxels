@@ -7,6 +7,12 @@ staged changes in scope, to a *judge*: any OpenAI-compatible chat endpoint (Olla
 llama.cpp, vLLM, LM Studio, OpenAI, OpenRouter, …), local or remote, with or without
 an API key. Standard library only — one ``urllib`` POST.
 
+With ``kind: systemone`` the judge is a *decision model* instead (Ollama >= 0.35,
+TypeSafe, AWS, Upstage — anything serving the System One API): it can't chat, it only
+answers named questions with probabilities. The statement becomes one yes/no question
+(``POST {root}/v1/systemone``), and P(yes) gives ``holds`` and ``confidence`` directly —
+calibrated by construction, but with no ``reason``.
+
 The judge answers with a verdict: ``holds`` (bool), a ``reason`` (the instruction an
 agent can act on), and — when the endpoint returns logprobs — a calibrated
 ``confidence`` in [0, 1] read from the probability mass on the decision token. That
@@ -29,6 +35,13 @@ from dataclasses import dataclass, field
 
 DEFAULT_BASE_URL = "http://localhost:11434/v1"  # Ollama's OpenAI-compatible endpoint
 DEFAULT_MODEL = "qwen3:8b"
+KIND_OPENAI, KIND_SYSTEMONE = "openai", "systemone"
+DEFAULT_SYSTEMONE_URL = "http://localhost:11434"  # System One takes the server root, not /v1
+DEFAULT_SYSTEMONE_MODEL = "nimble"  # Ollama's launch decision model
+SYSTEMONE_QUESTION = (
+    "Does the statement hold for these staged changes? Judge only what the changes show. "
+    "If the changes are irrelevant to the statement, it holds."
+)
 DEFAULT_API_KEY_ENV = "OPENAI_API_KEY"
 DEFAULT_TIMEOUT = 60.0
 DEFAULT_MAX_CHARS = 60_000  # ~15k tokens of evidence; beyond that the diff is truncated
@@ -52,6 +65,7 @@ Transport = Callable[[str, dict, bytes, float], bytes]
 
 @dataclass(frozen=True)
 class JudgeConfig:
+    kind: str = KIND_OPENAI
     base_url: str = DEFAULT_BASE_URL
     model: str = DEFAULT_MODEL
     api_key: str | None = None
@@ -75,6 +89,7 @@ class Verdict:
 
 # Where the judge lives is a fact about a machine, not a rule of the project, so these
 # override the committed contract. The contract only decides *that* there is a judge.
+ENV_KIND = "HENXELS_JUDGE_KIND"  # the kind travels with the model: a decision model can't chat
 ENV_URL = "HENXELS_JUDGE_URL"
 ENV_MODEL = "HENXELS_JUDGE_MODEL"
 ENV_TIMEOUT = "HENXELS_JUDGE_TIMEOUT"
@@ -82,14 +97,24 @@ ENV_EXTRA_BODY = "HENXELS_JUDGE_EXTRA_BODY"  # JSON, merged over the contract's 
 ENV_FALLBACKS = "HENXELS_JUDGE_FALLBACKS"  # JSON array of fallback judge configs, appended to the contract's
 
 
+def _defaults_for(kind: str) -> tuple[str, str]:
+    """(base_url, model) when the contract leaves them out — they differ per kind."""
+    if kind == KIND_SYSTEMONE:
+        return DEFAULT_SYSTEMONE_URL, DEFAULT_SYSTEMONE_MODEL
+    return DEFAULT_BASE_URL, DEFAULT_MODEL
+
+
 def _parse_one_judge(raw: dict) -> JudgeConfig:
     """Parse a single judge config dict (used for both primary and fallback entries)."""
     key_env = str(raw.get("api_key_env", DEFAULT_API_KEY_ENV))
     key = os.environ.get(key_env) or None
     extra_body = dict(raw.get("extra_body") or {})
+    kind = str(raw.get("kind", KIND_OPENAI))
+    url, model = _defaults_for(kind)
     return JudgeConfig(
-        base_url=str(raw.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
-        model=str(raw.get("model", DEFAULT_MODEL)),
+        kind=kind,
+        base_url=str(raw.get("base_url", url)).rstrip("/"),
+        model=str(raw.get("model", model)),
         api_key=key,
         timeout=float(raw.get("timeout", DEFAULT_TIMEOUT)),
         max_chars=int(raw.get("max_chars", DEFAULT_MAX_CHARS)),
@@ -102,7 +127,7 @@ def _parse_one_judge(raw: dict) -> JudgeConfig:
 def config_from_settings(settings: dict) -> JudgeConfig | None:
     """Read ``settings.judge`` (``true`` for defaults, or a mapping). None = judging is off.
 
-    ``HENXELS_JUDGE_URL`` / ``_MODEL`` / ``_TIMEOUT`` / ``_EXTRA_BODY`` in the environment
+    ``HENXELS_JUDGE_KIND`` / ``_URL`` / ``_MODEL`` / ``_TIMEOUT`` / ``_EXTRA_BODY`` in the environment
     win over the contract, so a LAN endpoint never needs to be committed.
     ``HENXELS_JUDGE_FALLBACKS`` (JSON array) appends fallback judges to the contract's list.
     """
@@ -130,9 +155,12 @@ def config_from_settings(settings: dict) -> JudgeConfig | None:
             pass  # bad JSON in env must not break commits
     key_env = str(raw.get("api_key_env", DEFAULT_API_KEY_ENV))
     key = os.environ.get(key_env) or None
+    kind = str(env.get(ENV_KIND) or raw.get("kind", KIND_OPENAI))
+    url, model = _defaults_for(kind)
     return JudgeConfig(
-        base_url=str(env.get(ENV_URL) or raw.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
-        model=str(env.get(ENV_MODEL) or raw.get("model", DEFAULT_MODEL)),
+        kind=kind,
+        base_url=str(env.get(ENV_URL) or raw.get("base_url", url)).rstrip("/"),
+        model=str(env.get(ENV_MODEL) or raw.get("model", model)),
         api_key=key,
         timeout=float(env.get(ENV_TIMEOUT) or raw.get("timeout", DEFAULT_TIMEOUT)),
         max_chars=int(raw.get("max_chars", DEFAULT_MAX_CHARS)),
@@ -154,6 +182,9 @@ def _urllib_transport(url: str, headers: dict, body: bytes, timeout: float) -> b
 
 class OpenAICompatibleJudge:
     """POST /chat/completions on any OpenAI-compatible server; parse a JSON verdict.
+
+    Despite the name it also serves ``kind: systemone`` (POST /v1/systemone on a decision
+    model) — the fallback chain is shared, so one class keeps it in one place.
 
     When the primary endpoint fails (transport error, bad response), fallback judges
     are tried in order. A real verdict (holds=True or False) from any endpoint stops
@@ -178,21 +209,34 @@ class OpenAICompatibleJudge:
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if cfg.api_key:
             headers["Authorization"] = f"Bearer {cfg.api_key}"
-        body = {
-            "model": cfg.model,
-            "temperature": 0,
-            "max_tokens": 800,  # room for a reason; thinking models spend budget before the JSON
-            "logprobs": True,
-            "top_logprobs": 5,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": _user_prompt(sentence, why, evidence, cfg.max_chars, references)},
-            ],
-        }
+        prompt = _user_prompt(sentence, why, evidence, cfg.max_chars, references)
+        if cfg.kind == KIND_SYSTEMONE:
+            # removesuffix: a /v1 URL left over from a chat judge must not become /v1/v1.
+            url = f"{cfg.base_url.removesuffix('/v1')}/v1/systemone"
+            body = {
+                "model": cfg.model,
+                "state": prompt,
+                "questions": {"holds": {"type": "noul", "instructions": SYSTEMONE_QUESTION}},
+            }
+        elif cfg.kind == KIND_OPENAI:
+            url = f"{cfg.base_url}/chat/completions"
+            body = {
+                "model": cfg.model,
+                "temperature": 0,
+                "max_tokens": 800,  # room for a reason; thinking models spend budget before the JSON
+                "logprobs": True,
+                "top_logprobs": 5,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+            }
+        else:
+            return Verdict(holds=None, error=f"unknown judge kind {cfg.kind!r} — use {KIND_OPENAI} or {KIND_SYSTEMONE}")
         body.update(cfg.extra_body)
         transport = self._transport_for(cfg.base_url)
         try:
-            raw = transport(f"{cfg.base_url}/chat/completions", headers, json.dumps(body).encode(), cfg.timeout)
+            raw = transport(url, headers, json.dumps(body).encode(), cfg.timeout)
         except urllib.error.HTTPError as exc:
             return Verdict(holds=None, error=f"judge at {cfg.base_url} answered HTTP {exc.code}")
         except Exception as exc:  # noqa: BLE001 - any transport failure fails open
@@ -203,10 +247,10 @@ class OpenAICompatibleJudge:
             return Verdict(holds=None, error=f"judge at {cfg.base_url} returned a non-JSON response")
         if not isinstance(data, dict):
             return Verdict(holds=None, error=f"judge at {cfg.base_url} returned an unexpected payload")
-        if "error" in data and "choices" not in data:
+        if "error" in data and "choices" not in data and "answers" not in data:
             msg = data["error"].get("message") if isinstance(data["error"], dict) else data["error"]
             return Verdict(holds=None, error=f"judge at {cfg.base_url} refused: {msg}")
-        return parse_response(data)
+        return parse_systemone(data) if cfg.kind == KIND_SYSTEMONE else parse_response(data)
 
     def judge(self, sentence: str, why: str, evidence: str, references: dict[str, str] | None = None) -> Verdict:
         """``references`` maps ``@path`` names used in the sentence to their content.
@@ -274,6 +318,17 @@ def parse_response(data: dict) -> Verdict:
         return Verdict(holds=None, error=f"unparseable judge response: {content.strip()[:120]!r}")
     confidence = _confidence(choice.get("logprobs"), holds)
     return Verdict(holds=holds, confidence=confidence, reason=reason)
+
+
+def parse_systemone(data: dict) -> Verdict:
+    """Turn a System One answer into a Verdict: P(yes) is both the decision and its confidence."""
+    answers = data.get("answers")
+    answer = answers.get("holds") if isinstance(answers, dict) else None
+    p_yes = answer.get("noul") if isinstance(answer, dict) else None
+    if isinstance(p_yes, bool) or not isinstance(p_yes, (int, float)) or not 0.0 <= p_yes <= 1.0:
+        return Verdict(holds=None, error=f"unparseable decision-model response: {json.dumps(data)[:120]}")
+    holds = p_yes >= 0.5
+    return Verdict(holds=holds, confidence=p_yes if holds else 1.0 - p_yes)
 
 
 def _extract_decision(content: str) -> tuple[bool | None, str | None]:
